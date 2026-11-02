@@ -51,6 +51,9 @@ export default {
   "edit.keys.recording": "Press the keys… (click to cancel)",
   "edit.keys.hint": "Some combinations (⌘W, ⌘Q, ⌘T) are reserved by the browser: type them by hand. Needs the Accessibility permission.",
   "edit.keys.combo": "Combination",
+  "edit.keys.repeat": "Presses",
+  "edit.keys.gap": "Gap between presses (ms)",
+  "edit.keys.repeat.hint": "2 = quick double press of the combination, sent in one go (about 80 ms apart by default).",
 
   "edit.shell.cmd": "Command (zsh)",
   "edit.shell.cmd.ph": "open -a Safari\nsay hello",

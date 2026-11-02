@@ -123,8 +123,8 @@ async function runStep(step: Step, env: Record<string, string>): Promise<StepRes
       }
       case "keys":
         return fromExec(
-          await exec(["/usr/bin/osascript", "-"], { stdin: keysScript(parseKeys(step.keys)), timeoutMs: 10000 }),
-          10,
+          await exec(["/usr/bin/osascript", "-"], { stdin: keysScript(parseKeys(step.keys), step.repeat, step.gap), timeoutMs: 30000 }),
+          30,
           true,
         );
       case "text":

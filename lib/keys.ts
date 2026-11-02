@@ -48,10 +48,13 @@ export function parseKeys(spec: string): ParsedKeys {
 
 export const asString = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
-export function keysScript(p: ParsedKeys): string {
+// `repeat` presses inside ONE osascript run, `gap` ms apart: a double press needs to be faster than
+// the ~200 ms it takes to spawn a separate step.
+export function keysScript(p: ParsedKeys, repeat = 1, gap = 80): string {
   const using = p.mods.length ? ` using {${p.mods.map((m) => `${m} down`).join(", ")}}` : "";
   const action = p.kind === "code" ? `key code ${p.value}` : `keystroke ${asString(p.value)}`;
-  return `tell application "System Events" to ${action}${using}`;
+  if (repeat <= 1) return `tell application "System Events" to ${action}${using}`;
+  return `tell application "System Events"\nrepeat ${repeat} times\n${action}${using}\ndelay ${gap / 1000}\nend repeat\nend tell`;
 }
 
 // Types text; newlines become the Return key.

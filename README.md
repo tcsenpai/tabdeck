@@ -87,7 +87,7 @@ Terminal), because launchd starts the process.
 | `shell` | `zsh -lc "<cmd>"`, working directory and timeout (default 30 s, max 300) | The timeout kills child processes too. A background `cmd &` does not block the button |
 | `applescript` | `osascript` from stdin (30 s timeout) | |
 | `mac` | An action from the catalog below; generates the AppleScript | Some need *Accessibility* |
-| `keys` | `cmd+shift+4`, `ctrl+left`, `f5`… | **Record** button in the editor. Needs *Accessibility* |
+| `keys` | `cmd+shift+4`, `ctrl+left`, `f5`… Optional **Presses** (1–10) and a gap (ms) for quick repeats, e.g. a double press | **Record** button in the editor. Needs *Accessibility* |
 | `text` | Types the text (newline = Return) | Needs *Accessibility* |
 | `open` | URL, file, folder and/or app (`open`) | |
 | `http` | GET/POST/PUT/PATCH/DELETE with headers and body, 10 s timeout | `http(s)://` only |

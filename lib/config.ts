@@ -14,7 +14,7 @@ export type StepBody =
   | { type: "shell"; cmd: string; cwd: string; timeout: number }
   | { type: "applescript"; script: string }
   | { type: "mac"; action: string; args: Args }
-  | { type: "keys"; keys: string }
+  | { type: "keys"; keys: string; repeat?: number; gap?: number } // repeat/gap are stored only when repeat > 1
   | { type: "text"; text: string }
   | { type: "open"; target: string; app: string }
   | { type: "http"; method: string; url: string; headers: Record<string, string>; body: string }
@@ -127,7 +127,9 @@ function validateStepBody(raw: unknown, where: string): StepBody {
       } catch (e) {
         throw new ConfigError(`${where}.keys: ${(e as Error).message}`);
       }
-      return { type: "keys", keys };
+      const repeat = s.repeat === undefined ? 1 : int(s.repeat, `${where}.repeat`, 1, 10);
+      if (repeat === 1) return { type: "keys", keys };
+      return { type: "keys", keys, repeat, gap: s.gap === undefined ? 80 : int(s.gap, `${where}.gap`, 0, 1000) };
     }
     case "text":
       return { type: "text", text: str(s.text, `${where}.text`, { required: true, max: 5000 }) };

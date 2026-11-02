@@ -388,7 +388,23 @@ function stepFields(step, list, i) {
         h("p", { class: "hint" }, t("edit.when.hint")),
       ];
     case "keys":
-      return [field(t("edit.keys.combo"), keysField(step))];
+      return [
+        field(t("edit.keys.combo"), keysField(step)),
+        h("div", { class: "row" },
+          field(t("edit.keys.repeat"), h("input", {
+            type: "number", min: 1, max: 10, value: step.repeat ?? 1,
+            oninput: (e) => {
+              const n = Math.max(1, Math.min(10, Number(e.target.value) || 1));
+              if (n === 1) { delete step.repeat; delete step.gap; } else { step.repeat = n; step.gap ??= 80; }
+              touch();
+            },
+          })),
+          field(t("edit.keys.gap"), h("input", {
+            type: "number", min: 0, max: 1000, step: 10, value: step.gap ?? 80,
+            oninput: (e) => { if (step.repeat > 1) { step.gap = Number(e.target.value); touch(); } },
+          }))),
+        h("p", { class: "hint" }, t("edit.keys.repeat.hint")),
+      ];
     case "text":
       return [field(t("edit.text.text"), area(step, "text", { rows: 3 }))];
     case "open":
