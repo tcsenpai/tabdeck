@@ -1,2 +1,7 @@
 data/
 node_modules/
+
+# Local tooling, not part of the project
+.mycelium/
+.claude/
+AGENTS.md
