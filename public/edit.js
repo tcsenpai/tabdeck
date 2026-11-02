@@ -188,7 +188,7 @@ function select(id) {
 }
 
 function addButton(col, row) {
-  const b = { id: newId(), col, row, label: t("edit.grid.newButton"), icon: "⭐", color: "slate", kind: "button", confirm: false, showOutput: false, steps: [], hold: [], led: "", fader: { get: "", set: "" } };
+  const b = { id: newId(), col, row, label: t("edit.grid.newButton"), icon: "⭐", color: "slate", kind: "button", confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, fader: { get: "", set: "" } };
   page().buttons.push(b);
   touch();
   select(b.id);
@@ -589,6 +589,7 @@ function renderInspector() {
       ...(isFader ? [] : [
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.confirm, onchange: (e) => { btn.confirm = e.target.checked; touch(); } }), `${t("edit.insp.confirm")} `, h("small", {}, t("edit.insp.confirmHint"))),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.showOutput, onchange: (e) => { btn.showOutput = e.target.checked; touch(); } }), t("edit.insp.showOutput")),
+        h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.toggle, onchange: (e) => { btn.toggle = e.target.checked; touch(); preview(); } }), `${t("edit.insp.toggle")} `, h("small", {}, t("edit.insp.toggleHint"))),
       ]),
     ),
     ...(isFader

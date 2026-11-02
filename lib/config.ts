@@ -41,6 +41,7 @@ export interface Button {
   steps: Step[];
   hold: Step[]; // long press (kind "button" only)
   led: string; // shell command: exit 0 = on (kind "button" only)
+  toggle: boolean; // latching: the pad remembers on/off, flipped by each successful tap (ignored when `led` is set)
   fader: Fader; // kind "fader" only
 }
 export interface Page {
@@ -226,6 +227,7 @@ export function validateConfig(raw: unknown): PadConfig {
         steps: isFader ? [] : validateSteps(btn.steps ?? [], `${bw}.steps`),
         hold: isFader ? [] : validateSteps(btn.hold ?? [], `${bw}.hold`),
         led: isFader ? "" : str(btn.led, `${bw}.led`, { max: 2000 }),
+        toggle: !isFader && btn.toggle === true,
         fader: isFader ? fader : { get: "", set: "" },
       };
     });
@@ -273,7 +275,7 @@ export function publicView(cfg: PadConfig): { pages: PublicPage[] } {
         confirm: x.confirm,
         showOutput: x.showOutput,
         hasHold: x.hold.length > 0,
-        hasLed: x.led.trim() !== "",
+        hasLed: x.led.trim() !== "" || x.toggle,
       })),
     })),
   };
@@ -281,10 +283,10 @@ export function publicView(cfg: PadConfig): { pages: PublicPage[] } {
 
 const b = (
   id: string, col: number, row: number, label: string, icon: string, color: Color, steps: Step[],
-  extra: Partial<Pick<Button, "confirm" | "showOutput" | "hold" | "led">> = {},
+  extra: Partial<Pick<Button, "confirm" | "showOutput" | "hold" | "led" | "toggle">> = {},
 ): Button => ({
   id, col, row, label, icon, color, kind: "button", confirm: false, showOutput: false, steps,
-  hold: [], led: "", fader: { get: "", set: "" }, ...extra,
+  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, ...extra,
 });
 
 // Example pad on first start: harmless actions, all editable.
@@ -319,7 +321,7 @@ export function seedConfig(): PadConfig {
           ]),
           {
             id: "volume", col: 2, row: 1, label: "Volume", icon: "🎚️", color: "teal", kind: "fader",
-            confirm: false, showOutput: false, steps: [], hold: [], led: "",
+            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false,
             fader: {
               get: "osascript -e 'output volume of (get volume settings)'",
               set: 'osascript -e "set volume output volume $PAD_VALUE"',

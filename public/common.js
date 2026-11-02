@@ -38,7 +38,7 @@ export function applyGrid(gridEl, page) {
 export function tileEl(btn) {
   const isFader = btn.kind === "fader";
   const hasHold = !isFader && (btn.hasHold ?? btn.hold?.length > 0);
-  const hasLed = !isFader && (btn.hasLed ?? !!btn.led?.trim());
+  const hasLed = !isFader && (btn.hasLed ?? (!!btn.led?.trim() || !!btn.toggle));
   const dot = hasHold ? h("span", { class: "hdot", title: t("tile.hold") }) : null;
   const label = btn.label ? h("span", { class: "lb" }, btn.label) : null;
   const icon = btn.icon ? h("span", { class: "ic" }, btn.icon, dot) : null;

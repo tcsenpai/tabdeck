@@ -54,6 +54,8 @@ export default {
   "edit.keys.repeat": "Pressioni",
   "edit.keys.gap": "Intervallo tra le pressioni (ms)",
   "edit.keys.repeat.hint": "2 = doppia pressione rapida della combinazione, inviata in un colpo solo (circa 80 ms di distanza di default).",
+  "edit.insp.toggle": "Ricorda acceso/spento",
+  "edit.insp.toggleHint": "(il tasto si accende dopo un tocco e si spegne al successivo; ignorato se c'è un comando LED)",
 
   "edit.shell.cmd": "Comando (zsh)",
   "edit.shell.cmd.ph": "open -a Safari\nsay ciao",

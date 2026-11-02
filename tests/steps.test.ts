@@ -78,3 +78,37 @@ describe("step chaining", () => {
     expect(validateStep({ type: "when", cmd: "true", continueOnError: true }, "s")).toEqual({ type: "when", cmd: "true" });
   });
 });
+
+describe("latching buttons", () => {
+  test("toggle is stored only on buttons, defaults off, and counts as an LED for the tablet", async () => {
+    const { seedConfig, validateConfig, publicView } = await import("../lib/config.ts");
+    const cfg = structuredClone(seedConfig());
+    cfg.pages[0].buttons[0].toggle = true;
+    const ok = validateConfig(cfg);
+    expect(ok.pages[0].buttons[0].toggle).toBe(true);
+    expect(ok.pages[0].buttons[1].toggle).toBe(false);
+    expect(publicView(ok).pages[0].buttons[0].hasLed).toBe(true);
+    cfg.pages[0].buttons.find((b) => b.kind === "fader")!.toggle = true;
+    expect(validateConfig(cfg).pages[0].buttons.find((b) => b.kind === "fader")!.toggle).toBe(false);
+  });
+  test("remembered state flips, survives a restart, and is shown as the LED", async () => {
+    const { createState } = await import("../lib/state.ts");
+    const { seedConfig, validateConfig } = await import("../lib/config.ts");
+    const { mkdtempSync } = await import("node:fs");
+    const path = `${mkdtempSync("/tmp/tog-")}/toggles.json`;
+    const cfg = structuredClone(seedConfig());
+    cfg.pages[0].buttons[0].toggle = true;
+    const c = validateConfig(cfg);
+    const id = c.pages[0].buttons[0].id;
+    const s1 = createState(() => c, () => "r", path);
+    expect((await s1.get()).leds[id]).toBe(false);
+    s1.flip(id);
+    s1.invalidate();
+    expect((await s1.get()).leds[id]).toBe(true);
+    const s2 = createState(() => c, () => "r", path);
+    expect((await s2.get()).leds[id]).toBe(true);
+    s2.flip(id);
+    s2.invalidate();
+    expect((await s2.get()).leds[id]).toBe(false);
+  });
+});

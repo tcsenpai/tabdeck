@@ -54,6 +54,8 @@ export default {
   "edit.keys.repeat": "Presses",
   "edit.keys.gap": "Gap between presses (ms)",
   "edit.keys.repeat.hint": "2 = quick double press of the combination, sent in one go (about 80 ms apart by default).",
+  "edit.insp.toggle": "Remember on/off",
+  "edit.insp.toggleHint": "(the key lights up after a tap and goes dark on the next; ignored if a status LED command is set)",
 
   "edit.shell.cmd": "Command (zsh)",
   "edit.shell.cmd.ph": "open -a Safari\nsay hello",

@@ -237,6 +237,9 @@ body {
 }
 .tile[data-on="1"] .led { background: var(--ok); border-color: var(--ok); box-shadow: 0 0 10px 2px var(--ok); }
 .tile[data-on="1"] .front { box-shadow: 0 0 26px -2px var(--glow), inset 0 0 30px -8px var(--c); }
+/* "On" reads as a pressed-in switch: the solid sinks and its label glows */
+.tile[data-on="1"] { --push: -10px; }
+.tile[data-on="1"] .lb { text-shadow: 0 0 14px var(--c), 0 0 4px var(--c); }
 
 /* Fader: track with fill and knob (only transform/left: no costly layout) */
 .tile.fader { touch-action: none; cursor: ew-resize; }

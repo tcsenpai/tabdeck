@@ -72,6 +72,11 @@ Terminal), because launchd starts the process.
 - **LED state:** one shell command per button, polled about every 2.5 s and after each
   action. Exit 0 = on (the key lights up). Timeout (3 s) = unknown, the LED does not change.
   The tablet never sees the command, only whether the LED exists.
+- **Remember on/off (latching):** for state the Mac cannot report (e.g. a Discord mic mute you
+  toggle with a hotkey), tick *Remember on/off*. Each tap that completes (an "only if" guard that
+  stops the chain does not count) flips the key between on and off: on = sunk in with a green LED.
+  Stored in `data/toggles.json`, survives restarts. It does not see changes made elsewhere: if
+  you toggle the mic by hand it will drift, and a button with a status-LED command uses that instead.
 - **Faders:** drag along the track; the integer value 0–100 reaches your commands in
   `$PAD_VALUE` (an environment variable, never interpolated into the string) about 10
   times per second. A "read value" command must print a number 0–100; the fader then

@@ -15,7 +15,7 @@ const PUBLIC_DIR = `${import.meta.dir}/public`;
 const MAX_BODY = 512 * 1024;
 
 const store = createStore(`${DATA_DIR}/pad.json`);
-const state = createState(() => store.config, () => store.rev);
+const state = createState(() => store.config, () => store.rev, `${DATA_DIR}/toggles.json`);
 const running: Record<string, true> = {};
 
 const noCache = { "Cache-Control": "no-store" };
@@ -131,6 +131,8 @@ const server = Bun.serve({
         running[key] = true;
         try {
           const r = await runSteps(steps, btn.id, env);
+          // Latching button: flip only when the chain really ran to the end (a false "only if" guard is not a press).
+          if (kind === "run" && r.ok && !r.stopped && btn.toggle && !btn.led.trim()) state.flip(btn.id);
           state.invalidate();
           return json({ ok: r.ok, ms: r.ms, out: r.out, error: r.error });
         } finally {
