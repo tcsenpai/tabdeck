@@ -1,0 +1,12 @@
+{
+  "name": "macrocenter",
+  "description": "Turn an old or weak tablet into a touch macro pad for your Mac. One Bun/TS process, vanilla JS, no build step, no dependencies.",
+  "keywords": ["macro-pad", "stream-deck", "macos", "tablet", "chromebook", "bun", "applescript", "touch", "automation"],
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun server.ts",
+    "dev": "bun --watch server.ts",
+    "test": "bun test"
+  }
+}

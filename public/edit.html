@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="edit.title">Macro pad — Editor</title>
+  <link rel="stylesheet" href="/assets/pad.css">
+  <link rel="stylesheet" href="/assets/edit.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Macro pad</h1>
+    <span class="status" id="status"></span>
+    <span class="spacer"></span>
+    <span class="lan" id="lan" data-i18n-title="edit.lan.title"></span>
+    <select id="lang" data-i18n-aria="edit.lang"></select>
+    <a class="btn sm" href="/" target="_blank" rel="noopener" data-i18n="edit.openPad">Open pad ↗</a>
+  </header>
+  <div class="layout">
+    <section class="stage">
+      <div class="pagebar" id="pagebar"></div>
+      <div class="pagecfg" id="pagecfg"></div>
+      <div class="canvas"><div class="grid" id="grid"></div></div>
+      <p class="hint" data-i18n="edit.hint.grid">Click + to create a button, drag to move or swap. Changes save automatically and the tablet updates right away.</p>
+    </section>
+    <aside class="inspector" id="insp"></aside>
+  </div>
+  <script type="module" src="/assets/edit.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+import { describe, expect, test } from "bun:test";
+import { ConfigError, validateStep, validateSteps } from "../lib/config.ts";
+import { ACTIONS, macScript, normalizeArgs } from "../lib/macos.ts";
+import { runSteps } from "../lib/run.ts";
+
+const shell = (cmd: string, extra: object = {}) => ({ type: "shell" as const, cmd, cwd: "", timeout: 5, ...extra });
+
+describe("mac actions", () => {
+  test("user text is escaped, never able to break out of the AppleScript string", () => {
+    const evil = 'x" & (do shell script "touch /tmp/pwn") & "';
+    const args = normalizeArgs("system.notify", { title: "t", message: evil });
+    const script = macScript("system.notify", args);
+    expect(script).toContain('\\"');
+    // every quote that came from the input is preceded by a backslash
+    expect(script.replace(/\\"/g, "").match(/"/g)?.length).toBe(4); // message + title delimiters only
+  });
+  test("ints are range-checked, selects restricted, required text enforced, defaults applied", () => {
+    expect(() => normalizeArgs("system.volume", { level: 101 })).toThrow();
+    expect(() => normalizeArgs("system.volume", { level: 1.5 })).toThrow();
+    expect(() => normalizeArgs("system.volume", { level: "5; rm -rf ~" })).toThrow();
+    expect(normalizeArgs("system.volume", { level: "40" })).toEqual({ level: 40 });
+    expect(normalizeArgs("system.volume", {})).toEqual({ level: 50 });
+    expect(() => normalizeArgs("system.mute", { mode: "maybe" })).toThrow();
+    expect(() => normalizeArgs("app.open", { app: "  " })).toThrow();
+    expect(() => normalizeArgs("nope.nothing", {})).toThrow();
+    expect(normalizeArgs("app.open", { app: "Safari", extra: "dropped" })).toEqual({ app: "Safari" });
+  });
+  test("every action generates a script with its defaults (catalog is self-consistent)", () => {
+    for (const a of ACTIONS) {
+      const defaults: Record<string, string | number> = {};
+      for (const p of a.params) defaults[p.key] = p.type === "text" ? "Finder" : p.default;
+      const script = macScript(a.id, normalizeArgs(a.id, defaults));
+      expect(script.length).toBeGreaterThan(10);
+    }
+  });
+  test("a mac step is validated when the button config is saved", () => {
+    expect(() => validateStep({ type: "mac", action: "system.volume", args: { level: 999 } }, "s")).toThrow(ConfigError);
+    expect(validateStep({ type: "mac", action: "music.playpause" }, "s")).toEqual({ type: "mac", action: "music.playpause", args: {} });
+  });
+});
+
+describe("step chaining", () => {
+  test("$PAD_OUT carries the previous step's output", async () => {
+    const r = await runSteps([shell("echo hello"), shell('echo "got:$PAD_OUT"')]);
+    expect(r.out).toBe("got:hello");
+  });
+  test("a failing step stops the chain, unless continueOnError", async () => {
+    const stop = await runSteps([shell("exit 2"), shell("echo after")]);
+    expect(stop.ok).toBe(false);
+    expect(stop.steps).toHaveLength(1);
+
+    const go = await runSteps([shell("exit 2", { continueOnError: true }), shell("echo after")]);
+    expect(go.ok).toBe(true);
+    expect(go.steps).toHaveLength(2);
+    expect(go.steps[0]).toMatchObject({ ok: false, ignored: true });
+    expect(go.out).toBe("after");
+  });
+  test("a false guard ends the chain silently; a broken guard is an error", async () => {
+    const guarded = await runSteps([{ type: "when", cmd: "test -f /nonexistent/file" }, shell("echo never")]);
+    expect(guarded.ok).toBe(true);
+    expect(guarded.stopped).toBe(true);
+    expect(guarded.steps).toHaveLength(1);
+
+    const pass = await runSteps([{ type: "when", cmd: "true" }, shell("echo ran")]);
+    expect(pass.out).toBe("ran");
+    expect(pass.stopped).toBeUndefined();
+
+    const broken = await runSteps([{ type: "when", cmd: "definitely-not-a-command-xyz" }, shell("echo never")]);
+    expect(broken.ok).toBe(false);
+    expect(broken.steps).toHaveLength(1);
+  });
+  test("continueOnError is stored only when true and never on a guard", () => {
+    expect(validateSteps([shell("true", { continueOnError: true }), shell("true", { continueOnError: "yes" })])).toMatchObject([
+      { continueOnError: true },
+      {},
+    ]);
+    expect(validateSteps([shell("true", { continueOnError: "yes" })])[0]).not.toHaveProperty("continueOnError");
+    expect(validateStep({ type: "when", cmd: "true", continueOnError: true }, "s")).toEqual({ type: "when", cmd: "true" });
+  });
+});

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0b0d12">
+  <title>Macro pad</title>
+  <link rel="stylesheet" href="/assets/pad.css">
+  <link rel="stylesheet" href="/assets/pad-deco.css">
+</head>
+<body class="fx" oncontextmenu="return false">
+  <div class="app">
+    <main class="grid" id="grid"></main>
+    <footer class="bar">
+      <nav class="tabs" id="tabs" role="tablist"></nav>
+      <span class="dot" id="dot" title="Mac connection" data-i18n-title="pad.conn"></span>
+      <button class="iconbtn" id="fs" type="button" aria-label="Fullscreen" data-i18n-aria="pad.fullscreen">⛶</button>
+    </footer>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="/assets/pad.js"></script>
+  <script type="module" src="/assets/pad-deco.js"></script>
+</body>
+</html>
