@@ -23,7 +23,11 @@ const CODES: Record<string, number> = {
 // Names for characters that cannot be written next to the "+" separator.
 const CHAR_ALIASES: Record<string, string> = { plus: "+", minus: "-", comma: ",", period: ".", slash: "/" };
 
-export type ParsedKeys = { mods: string[]; kind: "char"; value: string } | { mods: string[]; kind: "code"; value: number };
+// kind "mod": only modifiers (e.g. "opt", "cmd+shift"): pressed together, then released.
+export type ParsedKeys =
+  | { mods: string[]; kind: "char"; value: string }
+  | { mods: string[]; kind: "code"; value: number }
+  | { mods: string[]; kind: "mod" };
 
 export function parseKeys(spec: string): ParsedKeys {
   const tokens = spec.split("+").map((t) => t.trim().toLowerCase());
@@ -33,13 +37,20 @@ export function parseKeys(spec: string): ParsedKeys {
   }
   if (tokens.some((t) => t === "")) throw new Error(`Invalid key combination: "${spec}"`);
   const key = tokens[tokens.length - 1];
+  if (Object.hasOwn(MODS, key)) {
+    const all: string[] = [];
+    for (const t of tokens) {
+      if (!Object.hasOwn(MODS, t)) throw new Error(`Unknown modifier "${t}" in "${spec}"`);
+      if (!all.includes(MODS[t])) all.push(MODS[t]);
+    }
+    return { mods: all, kind: "mod" };
+  }
   const mods: string[] = [];
   for (const t of tokens.slice(0, -1)) {
     if (!Object.hasOwn(MODS, t)) throw new Error(`Unknown modifier "${t}" in "${spec}"`);
     const m = MODS[t];
     if (!mods.includes(m)) mods.push(m);
   }
-  if (Object.hasOwn(MODS, key)) throw new Error(`Missing final key in "${spec}"`);
   if (Object.hasOwn(CODES, key)) return { mods, kind: "code", value: CODES[key] };
   const ch = Object.hasOwn(CHAR_ALIASES, key) ? CHAR_ALIASES[key] : key;
   if ([...ch].length !== 1) throw new Error(`Unknown key "${key}" in "${spec}"`);
@@ -51,10 +62,16 @@ export const asString = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g
 // `repeat` presses inside ONE osascript run, `gap` ms apart: a double press needs to be faster than
 // the ~200 ms it takes to spawn a separate step.
 export function keysScript(p: ParsedKeys, repeat = 1, gap = 80): string {
-  const using = p.mods.length ? ` using {${p.mods.map((m) => `${m} down`).join(", ")}}` : "";
-  const action = p.kind === "code" ? `key code ${p.value}` : `keystroke ${asString(p.value)}`;
-  if (repeat <= 1) return `tell application "System Events" to ${action}${using}`;
-  return `tell application "System Events"\nrepeat ${repeat} times\n${action}${using}\ndelay ${gap / 1000}\nend repeat\nend tell`;
+  let press: string;
+  if (p.kind === "mod") {
+    press = [...p.mods.map((m) => `key down ${m}`), "delay 0.03", ...[...p.mods].reverse().map((m) => `key up ${m}`)].join("\n");
+  } else {
+    const using = p.mods.length ? ` using {${p.mods.map((m) => `${m} down`).join(", ")}}` : "";
+    press = (p.kind === "code" ? `key code ${p.value}` : `keystroke ${asString(p.value)}`) + using;
+  }
+  if (repeat <= 1 && p.kind !== "mod") return `tell application "System Events" to ${press}`;
+  const body = repeat <= 1 ? press : `repeat ${repeat} times\n${press}\ndelay ${gap / 1000}\nend repeat`;
+  return `tell application "System Events"\n${body}\nend tell`;
 }
 
 // Types text; newlines become the Return key.

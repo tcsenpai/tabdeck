@@ -54,7 +54,7 @@ Un pulsante è una **lista ordinata di azioni**; si ferma al primo errore
 | Comando shell | `zsh -lc "<cmd>"`, cartella e timeout (default 30 s, max 300) | Il timeout uccide anche i figli. Un `cmd &` in background non blocca il pulsante. `$PAD_BUTTON` = id del pulsante |
 | AppleScript | `osascript` da stdin (timeout 30 s) | |
 | Azione Mac | Azione del catalogo (vedi sotto), genera l'AppleScript | Alcune richiedono *Accessibilità* |
-| Scorciatoia | `cmd+shift+4`, `ctrl+left`, `f5`… Con **Pressioni** (1–10) e un intervallo (ms) per ripetizioni rapide, per esempio una doppia pressione | Pulsante **Registra** nell'editor. Serve *Accessibilità* |
+| Scorciatoia | `cmd+shift+4`, `ctrl+left`, `f5`… Un modificatore da solo (`opt`, `cmd+shift`) viene premuto e rilasciato. Con **Pressioni** (1–10) e un intervallo (ms) per ripetizioni rapide, per esempio il doppio tocco di Option | Pulsante **Registra** nell'editor. Serve *Accessibilità* |
 | Scrivi testo | Digita il testo (a-capo = Invio) | Serve *Accessibilità* |
 | Apri | URL, file, cartella e/o app (`open`) | |
 | HTTP | GET/POST/PUT/PATCH/DELETE con header e body, timeout 10 s | Solo `http(s)://` |

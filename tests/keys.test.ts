@@ -19,3 +19,17 @@ describe("repeated key presses", () => {
     }
   });
 });
+
+describe("modifier-only taps", () => {
+  test("a lone modifier is pressed and released; repeat 2 makes a double tap", () => {
+    expect(parseKeys("opt")).toEqual({ mods: ["option"], kind: "mod" });
+    expect(keysScript(parseKeys("cmd+shift"))).toBe('tell application "System Events"\nkey down command\nkey down shift\ndelay 0.03\nkey up shift\nkey up command\nend tell');
+    const dbl = keysScript(parseKeys("opt"), 2, 80);
+    expect(dbl).toContain("repeat 2 times");
+    expect(dbl.indexOf("key down option")).toBeLessThan(dbl.indexOf("key up option"));
+  });
+  test("an unknown token next to modifiers is still rejected", () => {
+    expect(() => parseKeys("opt+foo+shift")).toThrow();
+    expect(() => parseKeys("opt+")).toThrow();
+  });
+});
