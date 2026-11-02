@@ -21,7 +21,7 @@ web apps, but they make fine macro pads. This one is built to stay light on them
 - No build step, no framework, **zero dependencies** (`package.json` has none).
 - The pad page is about **39 KB uncompressed** in total: `pad.html`, `pad.css`,
   `pad-deco.css`, `pad.js`, `pad-deco.js`, `common.js`, `i18n.js` plus the two small pad
-  locale files (measured with `wc -c`: 38,957 bytes, about 14 KB gzipped).
+  locale files (measured with `wc -c`: 38,957 bytes; 14,608 bytes with each file gzipped on its own, `gzip -9`).
 - Animations only use `transform` and `opacity`; no blur and no `backdrop-filter`.
   `prefers-reduced-motion` turns the page transition off.
 - The tablet only displays buttons and sends presses; everything runs on the Mac.
