@@ -1,8 +1,8 @@
-# Macro pad
+# TabDeck
 
 > 🇬🇧 English · 🇮🇹 [Italiano](README.it.md)
 
-**Turn an old or weak tablet into a macro pad for your Mac.**
+**Turn an old or weak tablet into a macro pad for your Mac.** A Stream Deck made from the tablet in your drawer.
 
 A touch grid of buttons that runs shortcuts, shell commands, AppleScript, URLs and
 HTTP calls on your Mac. One Bun/TypeScript process, vanilla JS, no build step, no
@@ -48,8 +48,8 @@ web apps, but they make fine macro pads. This one is built to stay light on them
 Requires [Bun](https://bun.sh) on a Mac.
 
 ```bash
-git clone <this repo> macrocenter
-cd macrocenter
+git clone https://github.com/tcsenpai/tabdeck
+cd tabdeck
 bun start          # or: bun run dev (restarts on server changes)
 ```
 
@@ -70,7 +70,7 @@ it starts at login and is restarted if it dies:
 scripts/launchd.sh install     # status | uninstall
 ```
 
-Log: `~/Library/Logs/macrocenter.log`. The path to `bun` is fixed at install time
+Log: `~/Library/Logs/tabdeck.log`. The path to `bun` is fixed at install time
 (version included): if your version manager updates it and removes the old one, run
 `install` again. Grant the Accessibility permission to the `bun` binary (not the
 Terminal), because launchd starts the process.

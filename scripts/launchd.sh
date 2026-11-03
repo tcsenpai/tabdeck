@@ -3,10 +3,10 @@
 #   scripts/launchd.sh install | uninstall | status
 set -eu
 
-LABEL="com.tcsenpai.macrocenter"
+LABEL="dev.tabdeck.pad"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-LOG="$HOME/Library/Logs/macrocenter.log"
+LOG="$HOME/Library/Logs/tabdeck.log"
 DOMAIN="gui/$(id -u)"
 
 case "${1:-}" in

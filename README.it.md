@@ -1,4 +1,4 @@
-# Macro pad
+# TabDeck
 
 > 🇬🇧 [English README](README.md) · 🇮🇹 Italiano (questa pagina)
 
@@ -19,7 +19,7 @@ agire sul Mac, non dentro un container.
 ## Avvio
 
 ```bash
-cd ~/coding/macrocenter
+cd tabdeck
 bun start          # oppure: bun run dev (riavvia a ogni modifica del server)
 ```
 
@@ -43,7 +43,7 @@ sul Mac. Si usa un LaunchAgent, che parte al login e viene rilanciato se cade:
 scripts/launchd.sh install     # status | uninstall
 ```
 
-Log in `~/Library/Logs/macrocenter.log`. Il percorso di `bun` è fissato all'installazione
+Log in `~/Library/Logs/tabdeck.log`. Il percorso di `bun` è fissato all'installazione
 (versione inclusa): se mise lo aggiorna e rimuove la vecchia, rilancia `install`.
 Il permesso Accessibilità va dato al binario `bun` (non al Terminale) perché il processo
 lo lancia launchd.
