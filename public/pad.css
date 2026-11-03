@@ -103,16 +103,16 @@ body {
 }
 .front { transform: translateZ(calc(var(--D) / 2)); }
 .back { transform: rotateX(180deg) translateZ(calc(var(--D) / 2)); display: grid; place-items: center; }
-.top, .bottom {
+.f.top, .f.bottom {
   left: 0;
   width: 100%;
   height: var(--D);
   top: calc(50cqh - var(--D) / 2);
   background: color-mix(in srgb, var(--c) 52%, #0a0d1a);
 }
-.top { transform: rotateX(90deg) translateZ(50cqh); }
-.bottom { transform: rotateX(-90deg) translateZ(50cqh); background: var(--face-side); }
-.right {
+.f.top { transform: rotateX(90deg) translateZ(50cqh); }
+.f.bottom { transform: rotateX(-90deg) translateZ(50cqh); background: var(--face-side); }
+.f.right {
   top: 0;
   width: var(--D);
   height: 100%;

@@ -13,6 +13,23 @@ dependencies.
 
 The project is early. The author runs it on a Lenovo Duet Chromebook.
 
+![The pad: 3D keys, a lit latching key, status LEDs, a fader](docs/screenshots/pad.jpg)
+
+<details>
+<summary>More screenshots</summary>
+
+A key flips to show the result of the press (here a success):
+
+![A key flipped to its result face](docs/screenshots/pad-flip.jpg)
+
+The editor, on the Mac:
+
+![The editor](docs/screenshots/editor.jpg)
+
+</details>
+
+*Screenshots were taken with a headless browser on a 960×600 (16:10) viewport, using demo buttons, not on a real tablet.*
+
 ## Why
 
 Old Chromebooks and 4 GB Android/ChromeOS tablets are too slow for most "dashboard"

@@ -2,6 +2,10 @@
 
 > 🇬🇧 [English README](README.md) · 🇮🇹 Italiano (questa pagina)
 
+
+![Il pad: tasti 3D, un tasto acceso a scatto, LED di stato, un cursore](docs/screenshots/pad.jpg)
+
+*Screenshot fatto con un browser headless a 960×600 (16:10), con pulsanti dimostrativi, non su un tablet vero. Altri nel [README inglese](README.md).*
 Un macro pad touch per il tablet (Lenovo Duet), configurato dal Mac. Un solo
 processo Bun/TS, frontend vanilla, nessuna dipendenza e nessun build step.
 Il progetto è pensato per **ridare vita a tablet vecchi o deboli**.
