@@ -301,7 +301,7 @@ export function seedConfig(): PadConfig {
         rows: 3,
         buttons: [
           b("notifica", 0, 0, "Notification", "🔔", "violet", [
-            { type: "applescript", script: 'display notification "The pad works" with title "Macrocenter"' },
+            { type: "applescript", script: 'display notification "The pad works" with title "TabDeck"' },
           ]),
           b("screenshot", 1, 0, "Screenshot", "📸", "blue", [{ type: "keys", keys: "cmd+shift+4" }]),
           b("muto", 2, 0, "Mute", "🔇", "amber", [
