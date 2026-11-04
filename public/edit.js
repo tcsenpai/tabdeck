@@ -1,5 +1,7 @@
 import { api, applyGrid, COLORS, h, MIN_SIZE, SUB, tileEl } from "/assets/common.js";
 import { STYLES } from "/assets/viz.js";
+import { autoSection } from "/assets/edit-auto.js";
+import { barSection } from "/assets/edit-bar.js";
 import { applyStatic, lang, LANGS, register, setLang, t } from "/assets/i18n.js";
 import en from "/assets/locale-edit-en.js";
 import it from "/assets/locale-edit-it.js";
@@ -166,6 +168,27 @@ function resize(dim, value) {
   renderAll();
 }
 
+// "Tablet profiles": a page can be limited to the tablets opened with ?profile=<id>.
+const slug = (name) => name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "tablet";
+function addProfile() {
+  const name = (prompt(t("edit.profile.prompt")) || "").trim().slice(0, 30);
+  if (!name) return;
+  let id = slug(name);
+  for (let n = 2; S.cfg.profiles.some((p) => p.id === id); n++) id = `${slug(name).slice(0, 26)}-${n}`;
+  S.cfg.profiles.push({ id, name });
+  page().profile = id;
+  touch();
+  renderAll();
+}
+function removeProfile(id) {
+  const p = S.cfg.profiles.find((x) => x.id === id);
+  if (!p || !confirm(t("edit.profile.confirmRemove", { name: p.name }))) return;
+  S.cfg.profiles = S.cfg.profiles.filter((x) => x.id !== id);
+  for (const pg of S.cfg.pages) if (pg.profile === id) pg.profile = "";
+  touch();
+  renderAll();
+}
+
 function renderPageCfg() {
   const p = page();
   const move = (d) => {
@@ -194,6 +217,17 @@ function renderPageCfg() {
         renderAll();
       },
     }, t("edit.page.delete")),
+    h("label", { class: "stepper" }, t("edit.profile.visible"),
+      h("select", { "aria-label": t("edit.profile.visible"), onchange: (e) => { p.profile = e.target.value; touch(); renderPageCfg(); } },
+        h("option", { value: "", selected: !p.profile }, t("edit.profile.all")),
+        ...S.cfg.profiles.map((q) => h("option", { value: q.id, selected: p.profile === q.id }, q.name)))),
+    h("button", { class: "btn sm", type: "button", title: t("edit.profile.hint"), onclick: addProfile }, t("edit.profile.add")),
+    ...(p.profile
+      ? [
+          h("span", { class: "hint" }, `${S.lanUrl || location.origin + "/"}?profile=${p.profile}`),
+          h("button", { class: "btn sm danger", type: "button", onclick: () => removeProfile(p.profile) }, t("edit.profile.remove")),
+        ]
+      : []),
   );
 }
 
@@ -656,7 +690,11 @@ function renderInspector() {
   const insp = $("insp");
   const btn = selected();
   if (!btn) {
-    insp.replaceChildren(h("p", { class: "insp-empty" }, t("edit.insp.empty")));
+    insp.replaceChildren(
+      h("p", { class: "insp-empty" }, t("edit.insp.empty")),
+      autoSection({ cfg: S.cfg, api, touch, rerender: renderAll, newId, currentPage: page }),
+      barSection({ cfg: S.cfg, touch, rerender: renderAll }),
+    );
     return;
   }
   const isFader = btn.kind === "fader";
@@ -809,6 +847,7 @@ try {
   const d = await api("/api/config");
   S.cfg = d.config;
   const lan = d.lan[0];
+  S.lanUrl = lan;
   if (lan) {
     $("lan").textContent = t("edit.lan", { lan });
     $("lan").addEventListener("click", () => navigator.clipboard?.writeText(lan));

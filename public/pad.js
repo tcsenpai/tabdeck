@@ -2,6 +2,7 @@ import { api, applyGrid, h, tileEl } from "/assets/common.js";
 import { t, register, applyStatic } from "/assets/i18n.js";
 import { mountRadio, mountStation, resetTiles, syncRadio } from "/assets/radio.js";
 import { mountViz, resetViz } from "/assets/viz.js";
+import { setBar } from "/assets/bar.js";
 import en from "/assets/locale-pad-en.js";
 import it from "/assets/locale-pad-it.js";
 
@@ -27,6 +28,21 @@ const ARM_MS = 3000;
 const HOLD_MS = 550; // = duration of the bar in .tile.holding .front::after
 const SWIPE_PX = 70;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Which profile this tablet is: `?profile=<id>` once, then remembered (`?profile=` clears it).
+const profile = (() => {
+  const q = new URLSearchParams(location.search).get("profile");
+  if (q !== null) {
+    if (q) localStorage.setItem("pad.profile", q);
+    else localStorage.removeItem("pad.profile");
+  }
+  return localStorage.getItem("pad.profile") || "";
+})();
+// Pages for this tablet: its own plus the shared ones; an unknown profile just sees the shared ones.
+const visiblePages = (pages) => {
+  const mine = pages.filter((p) => !p.profile || p.profile === profile);
+  return mine.length ? mine : pages;
+};
 
 function page() {
   return state.cfg.pages.find((p) => p.id === state.pageId) || state.cfg.pages[0];
@@ -153,7 +169,7 @@ function wireFader(b, el) {
 function render() {
   const p = page();
   state.pageId = p.id;
-  state.live = p.buttons.some((b) => b.hasLed || b.kind === "fader" || b.kind === "radio" || b.kind === "station");
+  state.live = autoOn() || p.buttons.some((b) => b.hasLed || b.kind === "fader" || b.kind === "radio" || b.kind === "station");
   applyGrid(gridEl, p);
   resetTiles(); // the previous page's station tiles are about to be replaced
   resetViz();
@@ -240,7 +256,34 @@ function applyState() {
     if (el._fader && Object.hasOwn(faders, id)) el._fader.sync(faders[id]);
   }
   if (state.data.radio) syncRadio(state.data.radio);
+  followAuto();
 }
+
+// ───────────── Automatic pages ─────────────
+// The server says which page the Mac's frontmost app maps to. The pad moves only when that answer
+// CHANGES, so a manual page tap sticks until the app in front changes.
+let lastAutoPage = null;
+const autoOn = () => !!state.cfg?.auto && localStorage.getItem("pad.auto") !== "off";
+function followAuto() {
+  const a = state.data.auto;
+  if (!autoOn() || !a || switching || a.page === lastAutoPage) return;
+  lastAutoPage = a.page;
+  const target = state.cfg.pages.find((p) => p.id === a.page); // a page of another tablet's profile is not here
+  if (target && target.id !== state.pageId) goPage(target.id, state.cfg.pages.indexOf(target) > pageIndex() ? 1 : -1);
+}
+function paintAuto() {
+  const btn = $("auto");
+  btn.hidden = !state.cfg?.auto;
+  btn.classList.toggle("on", autoOn());
+}
+$("auto").addEventListener("click", () => {
+  if (autoOn()) localStorage.setItem("pad.auto", "off");
+  else localStorage.removeItem("pad.auto");
+  lastAutoPage = null; // turning it on follows the current app right away
+  paintAuto();
+  state.live = autoOn() || state.live;
+  refreshState();
+});
 
 async function refreshState() {
   if (!state.live) return;
@@ -312,8 +355,11 @@ async function press(b, el, mode) {
 // ───────────── Loading and polling ─────────────
 async function load() {
   const d = await api("/api/pad");
+  d.pages = visiblePages(d.pages);
   state.cfg = d;
   kioskBtn.hidden = d.kiosk === "off";
+  paintAuto();
+  setBar($("chips"), d.bar);
   state.rev = d.rev;
   render();
   refreshState();

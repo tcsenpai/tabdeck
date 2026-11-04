@@ -3,8 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#0b0d12">
-  <title>Macro pad</title>
+  <meta name="theme-color" content="#04050c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/icon-192.png">
+  <title>TabDeck</title>
   <link rel="stylesheet" href="/assets/pad.css">
   <link rel="stylesheet" href="/assets/pad-deco.css">
   <link rel="stylesheet" href="/assets/radio.css">
@@ -15,7 +19,9 @@
     <main class="grid" id="grid"></main>
     <footer class="bar">
       <nav class="tabs" id="tabs" role="tablist"></nav>
+      <div class="chips" id="chips" hidden></div>
       <span class="dot" id="dot" title="Mac connection" data-i18n-title="pad.conn"></span>
+      <button class="iconbtn" id="auto" type="button" hidden title="Follow the app in front on the Mac" aria-label="Follow the app in front on the Mac" data-i18n-title="pad.auto" data-i18n-aria="pad.auto">⇆</button>
       <button class="iconbtn" id="reload" type="button" title="Reload" aria-label="Reload" data-i18n-title="pad.reload" data-i18n-aria="pad.reload">↻</button>
       <button class="iconbtn" id="kiosk" type="button" title="Dashboard" aria-label="Dashboard" data-i18n-title="pad.kiosk" data-i18n-aria="pad.kiosk">▦</button>
       <button class="iconbtn" id="fs" type="button" aria-label="Fullscreen" data-i18n-aria="pad.fullscreen">⛶</button>

@@ -6,6 +6,8 @@ import { parseKeys } from "./keys.ts";
 import { MOUSE_BUTTONS, type MouseButton } from "./mouse.ts";
 import { normalizeArgs, type Args } from "./macos.ts";
 import { isStation } from "./stations.ts";
+import type { AutoRule } from "./context.ts";
+import { isInfoKind, type InfoKind } from "./info.ts";
 
 // The pad grid is measured in units: a classic tile is SUB×SUB units, so a key can be resized in
 // quarter-tile steps (1×1 unit = a quarter of a classic tile).
@@ -70,22 +72,37 @@ function vizStyle(v: unknown, where: string): string {
   return v;
 }
 
+// A profile is one tablet's view: pages with a profile are shown only to the tablets opened with
+// `?profile=<id>`; pages with "" are shown to everyone.
+export interface Profile {
+  id: string;
+  name: string;
+}
 export interface Page {
   id: string;
   name: string;
   cols: number;
   rows: number;
+  profile: string; // "" = every tablet
   buttons: Button[];
 }
+// Automatic pages: when enabled, the pad follows the Mac's frontmost app (first matching rule wins).
+export interface Auto {
+  enabled: boolean;
+  rules: AutoRule[];
+}
 export interface PadConfig {
-  version: 1;
+  version: 2;
+  profiles: Profile[];
+  auto: Auto;
+  bar: InfoKind[]; // system chips in the pad's bottom bar (see lib/info.ts), in order
   pages: Page[];
 }
 
 export class ConfigError extends Error {}
 
 const ID_RE = /^[a-z0-9_-]{1,40}$/;
-const LIMITS = { pages: 12, cols: 8, rows: 6, steps: 20, headers: 20 };
+const LIMITS = { pages: 12, cols: 8, rows: 6, steps: 20, headers: 20, profiles: 8, autoRules: 40, bar: 6 };
 
 function obj(v: unknown, where: string): Record<string, unknown> {
   if (!v || typeof v !== "object" || Array.isArray(v)) throw new ConfigError(`${where}: expected an object`);
@@ -237,9 +254,39 @@ export function migrateConfig(raw: unknown): unknown {
   };
 }
 
+function validateAuto(raw: unknown, pageIds: Record<string, true>): Auto {
+  if (raw === undefined) return { enabled: false, rules: [] };
+  const o = obj(raw, "auto");
+  const rules: AutoRule[] = arr(o.rules ?? [], "auto.rules", LIMITS.autoRules).map((r, i) => {
+    const w = `auto.rules[${i}]`;
+    const x = obj(r, w);
+    const mode = x.mode === undefined ? "is" : x.mode;
+    if (mode !== "is" && mode !== "contains") throw new ConfigError(`${w}.mode: is/contains`);
+    const page = id(x.page, `${w}.page`);
+    if (!pageIds[page]) throw new ConfigError(`${w}.page: unknown page "${page}"`);
+    return {
+      app: str(x.app, `${w}.app`, { required: true, max: 100 }),
+      mode,
+      url: str(x.url, `${w}.url`, { max: 100 }),
+      title: str(x.title, `${w}.title`, { max: 100 }),
+      page,
+    };
+  });
+  return { enabled: o.enabled === true, rules };
+}
+
 export function validateConfig(raw: unknown): PadConfig {
   const root = obj(migrateConfig(raw), "config");
   const pageIds: Record<string, true> = {};
+  const profiles: Profile[] = arr(root.profiles ?? [], "profiles", LIMITS.profiles).map((p, i) => {
+    const o = obj(p, `profiles[${i}]`);
+    return { id: id(o.id, `profiles[${i}].id`), name: str(o.name, `profiles[${i}].name`, { required: true, max: 30 }) };
+  });
+  const profileIds: Record<string, true> = {};
+  for (const p of profiles) {
+    if (profileIds[p.id]) throw new ConfigError(`profiles: duplicate id "${p.id}"`);
+    profileIds[p.id] = true;
+  }
   const buttonIds: Record<string, true> = {};
   let radioSeen = false;
   const pages: Page[] = arr(root.pages, "pages", LIMITS.pages).map((p, pi) => {
@@ -313,10 +360,18 @@ export function validateConfig(raw: unknown): PadConfig {
         style: kind === "viz" ? vizStyle(btn.style, `${bw}.style`) : "",
       };
     });
-    return { id: pid, name: str(page.name, `${w}.name`, { required: true, max: 30 }), cols, rows, buttons };
+    const profile = page.profile === undefined || page.profile === "" ? "" : id(page.profile, `${w}.profile`);
+    if (profile && !profileIds[profile]) throw new ConfigError(`${w}.profile: unknown profile "${profile}"`);
+    return { id: pid, name: str(page.name, `${w}.name`, { required: true, max: 30 }), cols, rows, profile, buttons };
   });
   if (pages.length === 0) throw new ConfigError("pages: at least one page is required");
-  return { version: 2, pages };
+  const auto = validateAuto(root.auto, pageIds);
+  const bar: InfoKind[] = [];
+  for (const k of arr(root.bar ?? [], "bar", LIMITS.bar)) {
+    if (!isInfoKind(k)) throw new ConfigError(`bar: unknown chip "${String(k)}"`);
+    if (!bar.includes(k)) bar.push(k);
+  }
+  return { version: 2, profiles, auto, bar, pages };
 }
 
 // Value of a fader: integer 0–100.
@@ -346,8 +401,11 @@ export interface PublicPage extends Omit<Page, "buttons"> {
 }
 
 // What the tablet sees: presentation only, never the commands (steps, hold, led, fader).
-export function publicView(cfg: PadConfig): { pages: PublicPage[] } {
+export function publicView(cfg: PadConfig): { profiles: Profile[]; auto: boolean; bar: InfoKind[]; pages: PublicPage[] } {
   return {
+    profiles: cfg.profiles,
+    bar: cfg.bar,
+    auto: cfg.auto.enabled && cfg.auto.rules.length > 0, // the tablet only needs to know whether to follow
     pages: cfg.pages.map((p) => ({
       ...p,
       buttons: p.buttons.map((x) => ({
@@ -384,12 +442,16 @@ const b = (
 export function seedConfig(): PadConfig {
   return {
     version: 2,
+    profiles: [],
+    auto: { enabled: false, rules: [] },
+    bar: [],
     pages: [
       {
         id: "main",
         name: "Main",
         cols: 4,
         rows: 3,
+        profile: "",
         buttons: [
           b("notifica", 0, 0, "Notification", "🔔", "violet", [
             { type: "applescript", script: 'display notification "The pad works" with title "TabDeck"' },

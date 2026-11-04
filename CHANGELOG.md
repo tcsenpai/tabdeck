@@ -5,6 +5,17 @@ All notable changes. Newest first. The project is early and has no tagged releas
 ## Unreleased
 
 ### Added
+- **Automatic pages:** the pad follows the app in front on the Mac (optional). Rules match an app
+  name or bundle id, optionally a browser URL or window title; the first match wins. The editor can
+  detect the front app, offers 23 known apps and builds a starter page of default shortcuts for 9 of
+  them. Matching is server-side: the tablet only ever receives a page id. A ⇆ bar button pauses it
+  per tablet. The first lookup may trigger a one-time macOS Automation prompt.
+- **Info bar:** up to six system chips (CPU, RAM, battery, disk, volume, uptime, load, clock) in the
+  pad's bottom bar, chosen in the editor. Stock macOS tools only, cached for 2 s, polled every 5 s
+  while the tab is visible. Hidden on narrow screens.
+- **Tablet profiles:** pages can be shown on one tablet only (`?profile=<id>`, remembered per tablet).
+- **PWA manifest and icons.** Chrome offers a real install only in a secure context (https or
+  localhost); on a plain `http://LAN-IP` address use ChromeOS "Open as window".
 - **Visualizer tile** (`viz`): a spectrum of the Mac's system audio drawn on the tablet, in five
   styles chosen per tile (bars with peak caps, mirror, blocks, wave, ring). A Core Audio process
   tap (`tools/sysaudio.swift`) feeds an FFT; the server compiles it on first use and runs it only

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ConfigError, MIN_SIZE, SUB, migrateConfig, seedConfig, validateConfig, type PadConfig } from "../lib/config.ts";
+import { ConfigError, MIN_SIZE, SUB, migrateConfig, publicView, seedConfig, validateConfig, type PadConfig } from "../lib/config.ts";
 
 // A button as it was written by the tile-based format (version 1).
 const v1Button = (id: string, col: number, row: number, extra: object = {}) => ({
@@ -104,5 +104,81 @@ describe("visualizer tile", () => {
       { ...base, id: "b", col: 0, row: 2, w: 2, h: 1, kind: "viz" },
     ];
     expect(validateConfig(c).pages[0].buttons).toHaveLength(2);
+  });
+});
+
+describe("tablet profiles", () => {
+  const withProfiles = (profiles: unknown, pageProfile?: unknown) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { profiles: unknown }).profiles = profiles;
+    if (pageProfile !== undefined) (c.pages[0] as unknown as { profile: unknown }).profile = pageProfile;
+    return () => validateConfig(c);
+  };
+  test("a pad without profiles is valid and every page is for everyone", () => {
+    const c = validateConfig(seedConfig());
+    expect(c.profiles).toEqual([]);
+    expect(c.pages[0].profile).toBe("");
+  });
+  test("a page can be bound to a declared profile, and only to a declared one", () => {
+    const ok = withProfiles([{ id: "desk", name: "Desk" }], "desk")();
+    expect(ok.pages[0].profile).toBe("desk");
+    expect(withProfiles([{ id: "desk", name: "Desk" }], "wall")).toThrow(ConfigError);
+    expect(withProfiles([], "desk")).toThrow(ConfigError);
+  });
+  test("profile ids are strict and unique, with a cap", () => {
+    expect(withProfiles([{ id: "a", name: "A" }, { id: "a", name: "B" }])).toThrow(ConfigError);
+    for (const bad of [{ id: "Has Space", name: "x" }, { id: "", name: "x" }, { id: "ok", name: "" }, { id: "../x", name: "x" }]) {
+      expect(withProfiles([bad])).toThrow(ConfigError);
+    }
+    expect(withProfiles(Array.from({ length: 9 }, (_, i) => ({ id: `p${i}`, name: "n" })))).toThrow(ConfigError);
+  });
+});
+
+describe("automatic pages", () => {
+  const withAuto = (auto: unknown) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { auto: unknown }).auto = auto;
+    return () => validateConfig(c);
+  };
+  test("off by default; a pad without the block stays valid", () => {
+    const c = validateConfig(seedConfig());
+    expect(c.auto).toEqual({ enabled: false, rules: [] });
+    const old = JSON.parse(JSON.stringify(seedConfig()));
+    delete old.auto;
+    expect(validateConfig(old).auto.enabled).toBe(false);
+  });
+  test("rules need an app and an existing page; mode defaults to 'is'", () => {
+    const ok = withAuto({ enabled: true, rules: [{ app: "Discord", page: "main" }] })();
+    expect(ok.auto.rules[0]).toEqual({ app: "Discord", mode: "is", url: "", title: "", page: "main" });
+    for (const bad of [{ app: "", page: "main" }, { app: "x", page: "nope" }, { app: "x", page: "main", mode: "regex" }, { page: "main" }, "str"]) {
+      expect(withAuto({ enabled: true, rules: [bad] })).toThrow(ConfigError);
+    }
+    expect(withAuto({ rules: Array.from({ length: 41 }, () => ({ app: "x", page: "main" })) })).toThrow(ConfigError);
+  });
+  test("the tablet only learns whether to follow, never the rules", () => {
+    const c = withAuto({ enabled: true, rules: [{ app: "Secret App", page: "main", url: "private.example" }] })();
+    const view = publicView(c);
+    expect(view.auto).toBe(true);
+    expect(JSON.stringify(view)).not.toMatch(/Secret App|private\.example/);
+    expect(publicView(withAuto({ enabled: true, rules: [] })()).auto).toBe(false);
+  });
+});
+
+describe("info bar", () => {
+  const withBar = (bar: unknown) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { bar: unknown }).bar = bar;
+    return () => validateConfig(c);
+  };
+  test("empty by default; chips keep their order and drop duplicates", () => {
+    expect(validateConfig(seedConfig()).bar).toEqual([]);
+    expect(withBar(["mem", "cpu", "mem"])().bar).toEqual(["mem", "cpu"]);
+    expect(publicView(withBar(["clock"])()).bar).toEqual(["clock"]);
+  });
+  test("unknown chips and more than six are rejected", () => {
+    expect(withBar(["rm -rf"])).toThrow(ConfigError);
+    expect(withBar(["cpu", 3])).toThrow(ConfigError);
+    expect(withBar(["cpu", "mem", "battery", "disk", "volume", "uptime", "load"])).toThrow(ConfigError);
+    expect(withBar("cpu")).toThrow(ConfigError);
   });
 });

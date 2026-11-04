@@ -14,6 +14,8 @@ export default {
   "pad.radio.out.tablet": "Suona su questo tablet (tocca per ascoltarla sul Mac)",
   "pad.radio.tuning": "SINTONIA…",
   "pad.radio.idle": "TOCCA PLAY",
+  "pad.auto": "Segui l'app in primo piano sul Mac (tocca per sospendere)",
+  "bar.cpu": "CPU", "bar.mem": "RAM", "bar.battery": "BATT", "bar.disk": "DISCO", "bar.volume": "VOL", "bar.uptime": "ATTIV", "bar.load": "CARICO", "bar.clock": "ORA",
   "pad.radio.live": "IN ONDA",
   "pad.viz.starting": "IN ASCOLTO…",
   "pad.viz.silent": "NESSUN AUDIO (o consenti la Registrazione audio di sistema)",

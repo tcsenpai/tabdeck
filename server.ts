@@ -4,6 +4,8 @@
 import { ConfigError, createStore, faderValue, publicView, validateStep, validateSteps, type Step } from "./lib/config.ts";
 import { createState } from "./lib/state.ts";
 import { catalog, macScript } from "./lib/macos.ts";
+import { APP_PRESETS, createContext, matchRule } from "./lib/context.ts";
+import { createInfo } from "./lib/info.ts";
 import { createRadio, radioCommand } from "./lib/radio.ts";
 import { createViz, sseResponse } from "./lib/viz.ts";
 import { editorAllowed, sameOriginOk } from "./lib/guard.ts";
@@ -24,6 +26,8 @@ const hasRadio = () => store.config.pages.some((p) => p.buttons.some((b) => b.ki
 // replaces it (tests / `tools/sysaudio --test-tone`).
 const viz = createViz({ dir: DATA_DIR, helper: process.env.VIZ_HELPER?.trim() ? process.env.VIZ_HELPER.trim().split(/\s+/) : undefined });
 const hasViz = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "viz"));
+const frontmost = createContext(); // which app is in front on the Mac (automatic pages, editor "detect")
+const info = createInfo();
 // Where the pad's dashboard button goes. "" = the same host on port 8420; "off" hides the button.
 // Only http(s) URLs are accepted: the value ends up in window.open() on the tablet.
 const KIOSK_URL = (() => {
@@ -85,8 +89,12 @@ const server = Bun.serve({
       if (path === "/healthz") return json({ ok: true });
 
       if (method === "GET" && path === "/") return serveFile("pad.html");
+      if (method === "GET" && path === "/manifest.webmanifest") {
+        const f = Bun.file(`${PUBLIC_DIR}/manifest.webmanifest`);
+        return new Response(f, { headers: { ...noCache, "Content-Type": "application/manifest+json" } });
+      }
 
-      if (path === "/edit" || path === "/api/actions" || path === "/api/macscript" || path.startsWith("/api/config") || path === "/api/test") {
+      if (path === "/edit" || path === "/api/actions" || path === "/api/macscript" || path === "/api/presets" || path === "/api/context" || path.startsWith("/api/config") || path === "/api/test") {
         if (!editorAllowed(host, srv.requestIP(req)?.address, localIps())) {
           return path === "/edit"
             ? new Response(FORBIDDEN_HTML, { status: 403, headers: { "Content-Type": "text/html; charset=utf-8" } })
@@ -100,6 +108,8 @@ const server = Bun.serve({
           return json({ rev: store.rev, config: cfg });
         }
         if (method === "GET" && path === "/api/actions") return json(catalog());
+        if (method === "GET" && path === "/api/presets") return json(APP_PRESETS);
+        if (method === "GET" && path === "/api/context") return json(await frontmost.get());
         if (method === "POST" && path === "/api/macscript") {
           // The AppleScript a "mac" step generates, so the editor can show/convert it.
           const body = await readJson(req);
@@ -121,9 +131,17 @@ const server = Bun.serve({
 
       if (method === "GET" && path === "/api/pad") return json({ rev: store.rev, kiosk: KIOSK_URL, ...publicView(store.config) });
       if (method === "GET" && path === "/api/rev") return json({ rev: store.rev });
+      // The chips come from pad.json, never from the request: a client cannot choose what the server runs.
+      if (method === "GET" && path === "/api/info") return json(await info.read(store.config.bar));
       if (method === "GET" && path === "/api/state") {
         const s = await state.get();
-        return json(hasRadio() ? { ...s, radio: radio.get() } : s);
+        const out: Record<string, unknown> = hasRadio() ? { ...s, radio: radio.get() } : { ...s };
+        const { enabled, rules } = store.config.auto;
+        if (enabled && rules.length) {
+          // Only the page id goes to the tablet: the app name, window title or URL stay on the Mac.
+          out.auto = { page: matchRule(rules, await frontmost.get())?.page ?? "" };
+        }
+        return json(out);
       }
       if (method === "GET" && path === "/api/viz") {
         if (!hasViz()) return json({ error: "No visualizer on this pad" }, 404);

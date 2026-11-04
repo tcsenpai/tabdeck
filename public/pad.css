@@ -314,6 +314,25 @@ body {
   box-shadow: 0 -6px 24px -10px var(--accent);
 }
 .tabs { display: flex; gap: 10px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.chips { display: flex; gap: 8px; flex: none; }
+.chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+  padding: 3px 8px 6px;
+  border: 1px solid var(--line, #1c2748);
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.chip small { font-size: 9px; letter-spacing: .08em; color: var(--muted, #7c88b4); }
+.chip b { font-size: 14px; color: var(--accent); }
+.chip i { position: absolute; left: 6px; right: 6px; bottom: 2px; height: 2px; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+.chip.warn { border-color: var(--err); }
+.chip.warn b { color: var(--err); }
+.chip.warn i { background: var(--err); }
+@media (max-width: 700px) { .chips { display: none; } }
 .tab {
   flex: none;
   padding: 10px 22px;
@@ -406,3 +425,4 @@ body.fx::after {
   .tile.fader .ic { display: none; }
   .tile .hdot { display: none; }
 }
+.iconbtn.on { color: var(--ok); border-color: var(--ok); box-shadow: 0 0 10px -3px var(--ok); }
