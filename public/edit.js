@@ -122,7 +122,7 @@ function renderPagebar() {
 }
 
 function addPage() {
-  S.cfg.pages.push({ id: newId(), name: t("edit.page.default", { n: S.cfg.pages.length + 1 }), cols: 4, rows: 3, buttons: [] });
+  S.cfg.pages.push({ id: newId(), name: t("edit.page.default", { n: S.cfg.pages.length + 1 }), cols: 4, rows: 3, profile: "", buttons: [] });
   S.pi = S.cfg.pages.length - 1;
   S.sel = null;
   touch();
