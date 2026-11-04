@@ -7,7 +7,14 @@
 import { subscribeViz } from "/assets/viz.js";
 
 const SPLIT = [0.125, 0.5]; // bass: first 1/8 of the bands, mids: up to 1/2, highs: the rest
-const GAIN = [1, 1.25, 1.7]; // highs carry less energy in music: lift them a little so they show
+// The helper's levels are already normalised and sit high and flat for most music (0.5–0.85 across the
+// spectrum), so the absolute level hardly moves. What the eye wants is the beat: each zone is rescaled
+// against its own recent floor and ceiling, which drift toward the signal.
+const TRACK = 0.02; // per frame (~20/s): floor and ceiling follow the signal in about 2.5 s
+const MIN_RANGE = 0.1; // do not amplify noise when the music is steady
+const GATE = 0.08; // below this absolute energy a zone counts as silent
+const BASE = 0.2; // share of the brightness that stays while sound plays; the rest follows the beat
+const CURVE = 1.5; // above 1: only real peaks reach full brightness
 const ATTACK_S = 0.04; // time constants of the easing
 const RELEASE_S = 0.22;
 const STALE_MS = 700; // no frame for this long (silence, Mac asleep): fade out
@@ -20,6 +27,8 @@ let last = 0;
 let lastFrame = -Infinity;
 const target = [0, 0, 0];
 const level = [0, 0, 0];
+const floor = [1, 1, 1];
+const ceil = [0, 0, 0];
 
 const clamp01 = (x) => Math.min(1, Math.max(0, Number.isFinite(x) ? x : 0));
 
@@ -42,7 +51,13 @@ function onFrame(values) {
   const a = Math.max(1, Math.round(n * SPLIT[0]));
   const b = Math.max(a + 1, Math.round(n * SPLIT[1]));
   const cuts = [[0, a], [a, b], [b, n]];
-  for (let i = 0; i < 3; i++) target[i] = clamp01(Math.pow(energy(values, cuts[i][0], Math.max(cuts[i][0] + 1, cuts[i][1])) * GAIN[i], 0.85));
+  for (let i = 0; i < 3; i++) {
+    const e = energy(values, cuts[i][0], Math.max(cuts[i][0] + 1, cuts[i][1]));
+    ceil[i] = e > ceil[i] ? e : ceil[i] + (e - ceil[i]) * TRACK;
+    floor[i] = e < floor[i] ? e : floor[i] + (e - floor[i]) * TRACK;
+    const beat = clamp01((e - floor[i]) / Math.max(MIN_RANGE, ceil[i] - floor[i]));
+    target[i] = clamp01(e / GATE) * (BASE + (1 - BASE) * Math.pow(beat, CURVE));
+  }
   lastFrame = performance.now();
   if (!raf) {
     last = lastFrame;
@@ -103,4 +118,6 @@ export function setGlow(on) {
   root = parts = null;
   target.fill(0);
   level.fill(0);
+  floor.fill(1);
+  ceil.fill(0);
 }
