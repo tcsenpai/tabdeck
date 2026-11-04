@@ -99,6 +99,11 @@ describe("latching buttons", () => {
     const cfg = structuredClone(seedConfig());
     cfg.pages[0].buttons[0].toggle = true;
     const c = validateConfig(cfg);
+    // Only the remembered state is under test: no real osascript probes (slow on a loaded Mac).
+    for (const b of c.pages[0].buttons) {
+      b.led = "";
+      b.fader.get = "";
+    }
     const id = c.pages[0].buttons[0].id;
     const s1 = createState(() => c, () => "r", path);
     expect((await s1.get()).leds[id]).toBe(false);
