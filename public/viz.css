@@ -1,0 +1,38 @@
+/* Visualizer tile (kind "viz"): a spectrum, like the old Windows Media Player visualizations.
+   Only transform animates (bars scale, peak caps translate). */
+.tile.viz {
+  cursor: default;
+  /* A wide plane magnifies under the default tilt: keep it nearly frontal, with a long lens. */
+  --rest-x: -4deg;
+  --rest-y: -4deg;
+  perspective: 2600px;
+}
+.tile.viz:active { --push: 0px; }
+.tile.viz .in.vz { display: block; padding: 9cqh 5cqw; }
+.vz-bars { display: flex; align-items: stretch; gap: 0.7cqw; width: 100%; height: 100%; }
+.vz-col { position: relative; flex: 1; min-width: 0; }
+.vz-bar {
+  position: absolute;
+  inset: 0;
+  border-radius: 1px;
+  background: linear-gradient(to top, var(--c), color-mix(in srgb, var(--c) 35%, #fff));
+  box-shadow: 0 0 8px -2px var(--glow);
+  transform: scaleY(0.02);
+  transform-origin: bottom;
+}
+.vz-cap { position: absolute; inset: 0; transform: translateY(100%); }
+.vz-cap::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: #fff; opacity: 0.9; }
+.vz-msg {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 10cqh;
+  font: 700 max(10px, 7cqh) var(--mono);
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--warn);
+  text-shadow: 0 0 8px #000;
+}
+.vz-msg:empty { display: none; }
+.tile[data-vz="error"] .vz-msg { color: var(--err); }

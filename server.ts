@@ -5,6 +5,7 @@ import { ConfigError, createStore, faderValue, publicView, validateStep, validat
 import { createState } from "./lib/state.ts";
 import { catalog, macScript } from "./lib/macos.ts";
 import { createRadio, radioCommand } from "./lib/radio.ts";
+import { createViz, sseResponse } from "./lib/viz.ts";
 import { editorAllowed, sameOriginOk } from "./lib/guard.ts";
 import { runSteps } from "./lib/run.ts";
 import { networkInterfaces } from "node:os";
@@ -19,6 +20,10 @@ const store = createStore(`${DATA_DIR}/pad.json`);
 const state = createState(() => store.config, () => store.rev, `${DATA_DIR}/toggles.json`);
 const radio = createRadio(DATA_DIR);
 const hasRadio = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "radio" || b.kind === "station"));
+// System-audio visualizer: the helper only runs while a browser is watching. VIZ_HELPER="cmd args"
+// replaces it (tests / `tools/sysaudio --test-tone`).
+const viz = createViz({ dir: DATA_DIR, helper: process.env.VIZ_HELPER?.trim() ? process.env.VIZ_HELPER.trim().split(/\s+/) : undefined });
+const hasViz = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "viz"));
 // Where the pad's dashboard button goes. "" = the same host on port 8420; "off" hides the button.
 // Only http(s) URLs are accepted: the value ends up in window.open() on the tablet.
 const KIOSK_URL = (() => {
@@ -120,6 +125,11 @@ const server = Bun.serve({
         const s = await state.get();
         return json(hasRadio() ? { ...s, radio: radio.get() } : s);
       }
+      if (method === "GET" && path === "/api/viz") {
+        if (!hasViz()) return json({ error: "No visualizer on this pad" }, 404);
+        srv.timeout(req, 0); // a long-lived stream: the default idle timeout would cut it
+        return sseResponse(viz, req.signal);
+      }
       if (method === "POST" && path === "/api/radio") {
         if (!hasRadio()) return json({ error: "No radio on this pad" }, 404);
         return json(radio.apply(radioCommand(await readJson(req))));
@@ -169,5 +179,8 @@ const server = Bun.serve({
 console.log(`Macro pad:  http://localhost:${server.port}/   (editor: /edit)`);
 
 // Never leave a player running behind us.
-process.on("exit", () => radio.stop());
+process.on("exit", () => {
+  radio.stop();
+  viz.stop();
+});
 for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => process.exit(0));

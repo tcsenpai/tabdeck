@@ -22,7 +22,8 @@ export const STATIONS = [
   nr("d-notive", "D-Notive", "green"),
   { id: "virgin", name: "Virgin Radio", color: "red", group: "virgin", url: "https://icecast.unitedradio.it/Virgin.aac" },
 ];
-const NIGHTRIDE = STATIONS.filter((s) => s.group === "nightride"); // what the widget's ‹ › cycles
+// What the widget's ‹ › cycle: every station.
+const stationLabel = (s) => (s.group === "nightride" ? `${s.name} FM` : s.name);
 const byId = (id) => STATIONS.find((s) => s.id === id) ?? STATIONS[0];
 const META = "https://nightride.fm/meta";
 
@@ -33,11 +34,11 @@ export function radioInner(h) {
     btn("rd-play", t("pad.radio.play"), h("span", { class: "rd-ic" })),
     h("span", { class: "rd-lcd" },
       h("span", { class: "rd-top" },
-        h("span", { class: "rd-st" }, `${NIGHTRIDE[0].name} FM`),
+        h("span", { class: "rd-st" }, stationLabel(STATIONS[0])),
         h("button", { class: "rd-out", type: "button", title: t("pad.radio.out") }, "MAC"),
         h("span", { class: "rd-eq" }, h("i"), h("i"), h("i"), h("i"), h("i"))),
       h("span", { class: "rd-now" }, "—"),
-      h("span", { class: "rd-tune" }, ...NIGHTRIDE.map(() => h("i")))),
+      h("span", { class: "rd-tune" }, ...STATIONS.map(() => h("i")))),
     h("span", { class: "rd-nav" },
       btn("rd-prev", t("pad.radio.prev"), "‹"),
       btn("rd-next", t("pad.radio.next"), "›")),
@@ -127,9 +128,8 @@ async function toggle() {
 }
 
 async function step(d) {
-  const i = NIGHTRIDE.findIndex((s) => s.id === S.id); // -1 when another station (e.g. Virgin) is current
-  const from = i >= 0 ? i : d > 0 ? -1 : 0;
-  S.id = NIGHTRIDE[(from + d + NIGHTRIDE.length) % NIGHTRIDE.length].id;
+  const i = STATIONS.findIndex((s) => s.id === S.id);
+  S.id = STATIONS[(i + d + STATIONS.length) % STATIONS.length].id;
   if (S.output === "tablet" && S.tabletWants) tuneTablet();
   paint();
   try {
@@ -196,10 +196,10 @@ function paint() {
   if (r) {
     r.dataset.color = st.color;
     r.dataset.rd = S.status;
-    r.querySelector(".rd-st").textContent = st.group === "nightride" ? `${st.name} FM` : st.name;
+    r.querySelector(".rd-st").textContent = stationLabel(st);
     r.querySelector(".rd-now").textContent = now;
     r.querySelector(".rd-now").title = now;
-    const idx = NIGHTRIDE.findIndex((s) => s.id === st.id);
+    const idx = STATIONS.findIndex((s) => s.id === st.id);
     r.querySelectorAll(".rd-tune i").forEach((el, i) => el.classList.toggle("on", i === idx));
     r.querySelector(".rd-play").setAttribute("aria-label", active() ? t("pad.radio.pause") : t("pad.radio.play"));
     const out = r.querySelector(".rd-out");

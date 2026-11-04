@@ -81,3 +81,28 @@ describe("unit grid", () => {
     expect(() => validateConfig(c)).toThrow(ConfigError);
   });
 });
+
+describe("visualizer tile", () => {
+  const withViz = (over: object) => {
+    const c = structuredClone(seedConfig());
+    c.pages[0].buttons = [{ ...c.pages[0].buttons[0], id: "v", col: 0, row: 0, kind: "viz", ...over }];
+    return () => validateConfig(c);
+  };
+  test("it is resizable from 2×1 up, defaults to 4×2, and carries no actions", () => {
+    expect(withViz({ w: undefined, h: undefined })()).toBeDefined();
+    const ok = withViz({ w: undefined, h: undefined })().pages[0].buttons[0];
+    expect(ok).toMatchObject({ kind: "viz", w: 4, h: 2, steps: [], hold: [], led: "", toggle: false, station: "" });
+    expect(withViz({ w: 2, h: 1 })).not.toThrow();
+    expect(withViz({ w: 8, h: 6 })).not.toThrow();
+    for (const [w, h] of [[1, 1], [1, 2], [9, 1], [2, 0]] as const) expect(withViz({ w, h })).toThrow(ConfigError);
+  });
+  test("several visualizer tiles are fine (they share one stream)", () => {
+    const c = structuredClone(seedConfig());
+    const base = c.pages[0].buttons[0];
+    c.pages[0].buttons = [
+      { ...base, id: "a", col: 0, row: 0, w: 4, h: 2, kind: "viz" },
+      { ...base, id: "b", col: 0, row: 2, w: 2, h: 1, kind: "viz" },
+    ];
+    expect(validateConfig(c).pages[0].buttons).toHaveLength(2);
+  });
+});

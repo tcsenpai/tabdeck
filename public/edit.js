@@ -625,7 +625,8 @@ function setKind(btn, kind) {
   }
   // Grow to the kind's minimum (a radio wants a wide LCD), shifting if needed; refuse when there is no room.
   const [minW, minH] = MIN_SIZE[kind];
-  const wants = kind === "radio" ? [[3 * SUB, SUB], [minW, minH]] : [[Math.max(wOf(btn), minW), Math.max(hOf(btn), minH)]];
+  const PREFER = { radio: [[3 * SUB, SUB], [minW, minH]], viz: [[2 * SUB, SUB], [minW, minH]] };
+  const wants = PREFER[kind] ?? [[Math.max(wOf(btn), minW), Math.max(hOf(btn), minH)]];
   const want = wants.find(([w, h]) => placeNear(page(), btn.col, btn.row, w, h, btn));
   if (!want) return failWith("edit.size.noRoom");
   Object.assign(btn, { ...placeNear(page(), btn.col, btn.row, want[0], want[1], btn), w: want[0], h: want[1] });
@@ -660,6 +661,7 @@ function renderInspector() {
   const isFader = btn.kind === "fader";
   const isRadio = btn.kind === "radio";
   const isStation = btn.kind === "station";
+  const isViz = btn.kind === "viz";
   const preview = () => renderGrid();
   const [mainBox, holdBox, ledBox, getBox, setBox] = [h("div"), h("div"), h("div"), h("div"), h("div")];
   const testBtn = h("button", { class: "btn primary", type: "button", disabled: !btn.steps.length, onclick: () => runTest(btn.steps, mainBox, testBtn, btn.confirm) }, t("edit.insp.test"));
@@ -691,8 +693,16 @@ function renderInspector() {
       ...STATIONS.map((s) => h("option", { value: s.id, selected: btn.station === s.id }, s.name)))),
     common,
   );
+  const vizSec = () => h("div", { class: "sec" },
+    h("h3", {}, t("edit.insp.viz")),
+    h("p", { class: "hint" }, t("edit.viz.hint")),
+    h("div", { class: "field" }, h("span", {}, t("edit.insp.color")),
+      h("div", { class: "swatches" }, ...COLORS.map((c) =>
+        h("button", { class: "swatch", type: "button", dataset: { color: c }, title: c, "aria-pressed": String(btn.color === c), onclick: () => { btn.color = c; touch(); preview(); renderInspector(); } })))),
+    common,
+  );
   insp.replaceChildren(
-    ...(isRadio ? [] : [h("div", { class: "sec" },
+    ...(isRadio || isViz ? [] : [h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.appearance")),
       field(t("edit.insp.label"), text(btn, "label", { after: preview, max: 40 })),
       field(t("edit.insp.icon"), (() => {
@@ -708,17 +718,18 @@ function renderInspector() {
     h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.behavior")),
       field(t("edit.insp.kind"), h("select", { "aria-label": t("edit.insp.kind"), onchange: (e) => setKind(btn, e.target.value) },
-        h("option", { value: "button", selected: !isFader && !isRadio && !isStation }, t("edit.insp.kind.button")),
+        h("option", { value: "button", selected: !isFader && !isRadio && !isStation && !isViz }, t("edit.insp.kind.button")),
         h("option", { value: "fader", selected: isFader }, t("edit.insp.kind.fader")),
         h("option", { value: "radio", selected: isRadio }, t("edit.insp.kind.radio")),
-        h("option", { value: "station", selected: isStation }, t("edit.insp.kind.station")))),
-      ...(isFader || isRadio || isStation ? [] : [
+        h("option", { value: "station", selected: isStation }, t("edit.insp.kind.station")),
+        h("option", { value: "viz", selected: isViz }, t("edit.insp.kind.viz")))),
+      ...(isFader || isRadio || isStation || isViz ? [] : [
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.confirm, onchange: (e) => { btn.confirm = e.target.checked; touch(); } }), `${t("edit.insp.confirm")} `, h("small", {}, t("edit.insp.confirmHint"))),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.showOutput, onchange: (e) => { btn.showOutput = e.target.checked; touch(); } }), t("edit.insp.showOutput")),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.toggle, onchange: (e) => { btn.toggle = e.target.checked; touch(); preview(); } }), `${t("edit.insp.toggle")} `, h("small", {}, t("edit.insp.toggleHint"))),
       ]),
     ),
-    ...(isRadio ? [radioSec()] : isStation ? [stationSec()] : isFader
+    ...(isRadio ? [radioSec()] : isViz ? [vizSec()] : isStation ? [stationSec()] : isFader
       ? [
           h("div", { class: "sec" },
             h("h3", {}, t("edit.insp.fader")),

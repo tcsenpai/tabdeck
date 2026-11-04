@@ -126,8 +126,8 @@ Sistema → Privacy e sicurezza → Accessibilità → aggiungi il programma che
 
 ### Radio (autoradio)
 
-Un widget largo 2–4 celle per [Nightride FM](https://nightride.fm) (11 stazioni synthwave/
-cyberpunk): manopola play/pausa, display LCD con stazione e brano in onda, ‹ › per cambiare
+Un widget (da 4×2 unità, cioè largo due tile) per le stazioni incluse: [Nightride FM](https://nightride.fm)
+(11 stazioni synthwave/cyberpunk) e Virgin Radio: manopola play/pausa, display LCD con stazione e brano in onda, ‹ › per cambiare
 stazione, scala di sintonia ed equalizzatore. Suona **sul Mac per impostazione predefinita**
 (il server lancia `mpv`, o `ffplay`, cercati in `/opt/homebrew/bin`, `/usr/local/bin` o `PATH`;
 si può forzare con `RADIO_PLAYER="comando argomenti"`, l'URL dello stream viene aggiunto in
@@ -147,6 +147,29 @@ il widget mostra «IN ONDA»). Un tocco la avvia, un secondo la ferma; un altro 
 cambiano stazione. Si accende (affondato, LED verde) mentre suona e ha lo stesso badge
 **MAC/TAB**: tutti i tile radio condividono un solo player e un'unica uscita. Le stazioni sono
 le 11 di Nightride FM più Virgin Radio (`lib/stations.ts`).
+
+### Griglia a quarti di tile
+
+Ogni tasto si può ridimensionare, fino a un quarto di un tile classico. La griglia è misurata
+in *unità* (un tile classico è 2×2): nell'editor trascina la maniglia d'angolo del tasto
+selezionato oppure usa i pulsanti della sezione Dimensione. Minimi: tasto/stazione 1×1,
+cursore 2×1, visualizzatore 2×1, radio 4×2. I tasti che diventano piccoli nascondono
+l'etichetta (container query) invece di traboccare. Un pad salvato da una versione precedente
+viene migrato al primo avvio con la stessa disposizione, e l'originale resta in
+`data/pad.json.v1.bak`.
+
+### Tile visualizzatore (audio di sistema)
+
+Lo spettro di tutto ciò che il Mac sta riproducendo (qualsiasi app), disegnato sul tablet come
+nei vecchi visualizzatori dei lettori multimediali: 32 barre con i picchi che scendono,
+ridimensionabile, se ne possono mettere più d'uno. `tools/sysaudio.swift` cattura l'uscita di
+sistema con un *process tap* di Core Audio (nessun driver audio virtuale) e fa una FFT; il
+server lo compila al primo uso (servono gli Xcode Command Line Tools) e lo avvia solo mentre un
+tablet mostra il tile, fermandolo pochi secondi dopo che l'ultimo spettatore se n'è andato.
+**macOS chiede una volta la «Registrazione audio di sistema»** per il processo che esegue il
+server; se non si sente nulla il tile scrive «NESSUN AUDIO (o consenti la Registrazione audio di
+sistema)», perché silenzio e permesso negato sono indistinguibili. `VIZ_HELPER="comando"`
+sostituisce l'helper (per esempio `tools/sysaudio --test-tone` per un segnale dimostrativo).
 
 ## Modello di sicurezza
 
@@ -187,6 +210,9 @@ lib/keys.ts        "cmd+shift+4" → AppleScript System Events
 lib/guard.ts       loopback/Host/Origin
 lib/state.ts       stato dei LED
 lib/radio.ts       riproduttore radio sul Mac (mpv/ffplay), lista chiusa di stazioni
+lib/stations.ts    lista chiusa degli stream radio
+lib/viz.ts         avvia l'helper audio e distribuisce gli spettri (SSE)
+tools/sysaudio.swift  cattura dell'audio di sistema + FFT
 public/pad.*       pad per il tablet
 public/edit.*      editor
 public/common.js   DOM helper + tile condiviso pad/editor

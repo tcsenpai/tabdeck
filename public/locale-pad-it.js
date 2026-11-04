@@ -15,6 +15,8 @@ export default {
   "pad.radio.tuning": "SINTONIA…",
   "pad.radio.idle": "TOCCA PLAY",
   "pad.radio.live": "IN ONDA",
+  "pad.viz.starting": "IN ASCOLTO…",
+  "pad.viz.silent": "NESSUN AUDIO (o consenti la Registrazione audio di sistema)",
   "pad.radio.error": "NESSUN SEGNALE",
   "pad.reload": "Ricarica",
   "pad.kiosk": "Apri il kiosk della dashboard",

@@ -11,11 +11,12 @@ import { isStation } from "./stations.ts";
 // quarter-tile steps (1×1 unit = a quarter of a classic tile).
 export const SUB = 2;
 // Smallest size per kind, in units. A fader needs room for its track, the radio for its LCD.
-export const MIN_SIZE: Record<"button" | "fader" | "radio" | "station", [number, number]> = {
+export const MIN_SIZE: Record<"button" | "fader" | "radio" | "station" | "viz", [number, number]> = {
   button: [1, 1],
   station: [1, 1],
   fader: [2, 1],
   radio: [4, 2],
+  viz: [2, 1],
 };
 
 export const COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "violet", "pink"] as const;
@@ -47,7 +48,7 @@ export interface Button {
   label: string;
   icon: string;
   color: Color;
-  kind: "button" | "fader" | "radio" | "station";
+  kind: "button" | "fader" | "radio" | "station" | "viz";
   confirm: boolean;
   showOutput: boolean;
   steps: Step[];
@@ -251,15 +252,15 @@ export function validateConfig(raw: unknown): PadConfig {
       const col = int(btn.col, `${bw}.col`, 0, ucols - 1);
       const row = int(btn.row, `${bw}.row`, 0, urows - 1);
       const kind = btn.kind === undefined ? "button" : btn.kind;
-      if (kind !== "button" && kind !== "fader" && kind !== "radio" && kind !== "station") {
-        throw new ConfigError(`${bw}.kind: button/fader/radio/station`);
+      if (kind !== "button" && kind !== "fader" && kind !== "radio" && kind !== "station" && kind !== "viz") {
+        throw new ConfigError(`${bw}.kind: button/fader/radio/station/viz`);
       }
       const isFader = kind === "fader";
       const isRadio = kind === "radio";
       const isStationTile = kind === "station";
-      const inert = isFader || isRadio || isStationTile; // no tap actions of their own
+      const inert = isFader || isRadio || isStationTile || kind === "viz"; // no tap actions of their own
       const [minW, minH] = MIN_SIZE[kind];
-      const width = btn.w === undefined ? (isRadio ? 3 * SUB : SUB) : int(btn.w, `${bw}.w`, minW, ucols);
+      const width = btn.w === undefined ? (isRadio ? 3 * SUB : kind === "viz" ? 2 * SUB : SUB) : int(btn.w, `${bw}.w`, minW, ucols);
       const height = btn.h === undefined ? SUB : int(btn.h, `${bw}.h`, minH, urows);
       if (col + width > ucols || row + height > urows) {
         throw new ConfigError(`${bw}: does not fit in the ${ucols}×${urows} grid`);

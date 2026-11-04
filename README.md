@@ -103,8 +103,9 @@ Terminal), because launchd starts the process.
   `$PAD_VALUE` (an environment variable, never interpolated into the string) about 10
   times per second. A "read value" command must print a number 0–100; the fader then
   follows the Mac's real value, without overriding your finger or your last gesture (1.5 s).
-- **Radio (car stereo):** a widget 2–4 cells wide for [Nightride FM](https://nightride.fm)
-  (11 synthwave/cyberpunk stations): play/pause knob, LCD with station and the track on
+- **Radio (car stereo):** a widget (from 4×2 units, two tiles wide) for the built-in stations:
+  [Nightride FM](https://nightride.fm) (11 synthwave/cyberpunk) and Virgin Radio. It has a
+  play/pause knob, LCD with station and the track on
   air, ‹ › to change station, a tuner scale and an equalizer. It plays **on the Mac by
   default** (the server runs `mpv`, or `ffplay`, found in `/opt/homebrew/bin`, `/usr/local/bin`
   or `PATH`; override with `RADIO_PLAYER="cmd args"`, the stream URL is appended); the **MAC/TAB**
@@ -121,6 +122,21 @@ Terminal), because launchd starts the process.
   tile or the widget switches station. It lights up (sunk in, green LED) while it plays and has the
   same **MAC/TAB** badge: all radio tiles share one player and one output. Station list: the 11
   Nightride FM stations plus Virgin Radio (`lib/stations.ts`).
+- **Quarter-tile grid:** every key can be resized, down to a quarter of a classic tile. The grid
+  is measured in *units* (a classic tile is 2×2); in the editor drag the corner handle of the
+  selected key or use the Size steppers. Minimum sizes: key/station 1×1, fader 2×1, visualizer
+  2×1, radio 4×2. Keys that get small hide their label (container queries) instead of
+  overflowing. A pad saved by an earlier version is migrated on first start with the same
+  layout, and the original is kept as `data/pad.json.v1.bak`.
+- **Visualizer tile:** a spectrum of whatever the Mac is playing (any app), drawn on the tablet
+  like the old media-player visualizations: 32 bars with falling peak caps, resizable, several
+  allowed. `tools/sysaudio.swift` captures the system output with a Core Audio *process tap*
+  (no virtual audio driver) and runs an FFT; the server compiles it on first use (needs the Xcode
+  Command Line Tools) and starts it only while a tablet is showing the tile, stopping it a few
+  seconds after the last viewer leaves. **macOS asks once for "System Audio Recording"** for the
+  process that runs the server; when nothing is heard the tile says "NO AUDIO (or allow System
+  Audio Recording)" because silence and a denied permission look the same. `VIZ_HELPER="cmd args"`
+  replaces the helper (e.g. `tools/sysaudio --test-tone` for a demo signal).
 - **Mac actions catalog:** typed templates that generate AppleScript (see below).
 - **`when` guard** and **`continueOnError`** (see below).
 - **Language:** English or Italian (see below).
@@ -217,6 +233,9 @@ lib/keys.ts        "cmd+shift+4" → System Events AppleScript
 lib/guard.ts       loopback / Host / Origin checks
 lib/state.ts       LED and fader state probes
 lib/radio.ts       Mac-side radio player (mpv/ffplay), station whitelist
+lib/stations.ts    the radio stream whitelist
+lib/viz.ts         runs the audio helper and fans spectrum frames out (SSE)
+tools/sysaudio.swift  system-audio capture + FFT helper
 public/pad.*       the pad for the tablet
 public/edit.*      the editor
 public/common.js   DOM helper + tile shared by pad and editor

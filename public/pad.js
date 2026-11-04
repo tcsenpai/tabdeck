@@ -1,6 +1,7 @@
 import { api, applyGrid, h, tileEl } from "/assets/common.js";
 import { t, register, applyStatic } from "/assets/i18n.js";
 import { mountRadio, mountStation, resetTiles, syncRadio } from "/assets/radio.js";
+import { mountViz, resetViz } from "/assets/viz.js";
 import en from "/assets/locale-pad-en.js";
 import it from "/assets/locale-pad-it.js";
 
@@ -155,10 +156,12 @@ function render() {
   state.live = p.buttons.some((b) => b.hasLed || b.kind === "fader" || b.kind === "radio" || b.kind === "station");
   applyGrid(gridEl, p);
   resetTiles(); // the previous page's station tiles are about to be replaced
+  resetViz();
   const tiles = p.buttons.map((b) => {
     const el = tileEl(b);
     if (b.kind === "radio") mountRadio(el);
     else if (b.kind === "station") mountStation(el, b.station);
+    else if (b.kind === "viz") mountViz(el);
     else if (b.kind === "fader") wireFader(b, el);
     else wireButton(b, el);
     return el;
