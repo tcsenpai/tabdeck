@@ -241,7 +241,7 @@ l'helper (per esempio `tools/mic --test-script`).
 ### Effetti overlay
 
 Livelli a tutto schermo sopra l'intero pad, scelti nell'editor (niente selezionato → «Effetti
-overlay»): **CRT** (linee di scansione, angoli scuri, sfarfallio), **barra di scansione**,
+overlay»): **CRT** (angoli scuri da vetro curvo, sfarfallio; le linee di scansione sono già del pad), **barra di scansione**,
 **glitch** (strisce che saltano e lampo di colore), **grana di pellicola**, **vignettatura forte**,
 **bordi cromatici**. Solo CSS, si animano soltanto opacity/transform (niente blur né blend mode), i
 tocchi passano attraverso, `prefers-reduced-motion` ferma le animazioni. Accesi di default una volta

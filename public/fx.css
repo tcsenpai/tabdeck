@@ -2,11 +2,10 @@
 .fx-layer { position: fixed; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; contain: strict; }
 .fx-part { position: absolute; inset: 0; }
 
-/* CRT: scanlines, curved-glass darkening at the corners, a faint flicker */
+/* CRT: curved-glass darkening at the corners and a faint flicker. The scanlines are already the pad's own
+   (body.fx::after), so they are not drawn a second time here. */
 .fx-crt {
-  background:
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.26) 0 1px, transparent 1px 3px),
-    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.5) 100%);
+  background: radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.5) 100%);
   animation: fx-flicker 7s steps(1) infinite;
 }
 @keyframes fx-flicker { 0%, 100% { opacity: 1; } 31% { opacity: 0.93; } 32% { opacity: 1; } 67% { opacity: 0.9; } 68% { opacity: 0.97; } 69% { opacity: 1; } }

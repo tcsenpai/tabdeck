@@ -231,7 +231,7 @@ export default {
   "edit.mic.hint": "Si accendono solo i quattro angoli con il rumore che sente il microfono del Mac, come le luci di una tastiera meccanica: ogni click di tasto o tocco accende l'angolo successivo. Ogni tablet sceglie la sorgente col pulsante ◩ nella barra (al posto dell'alone): il proprio microfono, analizzato sul tablet (non viene inviato nulla; il browser lo offre solo su https o localhost, o dopo aver consentito l'indirizzo del pad in chrome://flags/#unsafely-treat-insecure-origin-as-secure), oppure il microfono del Mac, analizzato sul Mac, che invia solo due numeri per frame. Nessun audio viene salvato. Per quello del Mac, macOS chiede una volta di consentire il Microfono al processo che esegue il server; ascolta solo finché un tablet l'ha acceso.",
   "edit.fx.title": "Effetti overlay",
   "edit.fx.hint": "Effetti disegnati sopra tutto il pad. Leggeri per il tablet (si animano solo opacity/transform, niente blur). Accesi di default; ogni tablet può spegnerli col pulsante ▤ nella barra.",
-  "edit.fx.crt": "CRT (linee di scansione, angoli scuri, sfarfallio)",
+  "edit.fx.crt": "CRT (angoli scuri da vetro curvo, sfarfallio)",
   "edit.fx.scanbar": "Barra di scansione (banda di luce che scende)",
   "edit.fx.glitch": "Glitch (strisce che saltano, lampo di colore)",
   "edit.fx.noise": "Grana di pellicola",

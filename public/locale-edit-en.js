@@ -231,7 +231,7 @@ export default {
   "edit.mic.hint": "Only the four corners light up with the noise the Mac's microphone hears, like a mechanical keyboard's lights: each key click or tap flashes the next corner. Each tablet picks its source with the ◩ button in the bar (instead of the glow): its own microphone, analysed on the tablet (nothing is sent; browsers offer it only over https or localhost, or after allowing the pad's address in chrome://flags/#unsafely-treat-insecure-origin-as-secure), or the Mac's microphone, analysed on the Mac, which sends only two numbers per frame. No audio is ever stored. For the Mac's, macOS asks once to allow the Microphone for the process that runs the server; it listens only while a tablet has it on.",
   "edit.fx.title": "Overlay effects",
   "edit.fx.hint": "Effects drawn over the whole pad. Light on the tablet (only opacity/transform animate, no blur). On by default; each tablet can switch them off with the ▤ button in the bar.",
-  "edit.fx.crt": "CRT (scanlines, dark corners, flicker)",
+  "edit.fx.crt": "CRT (curved-glass dark corners, flicker)",
   "edit.fx.scanbar": "Scan bar (light band sweeping down)",
   "edit.fx.glitch": "Glitch (jumping strips, colour flash)",
   "edit.fx.noise": "Film grain",
