@@ -2,6 +2,7 @@ import { api, applyGrid, COLORS, h, MIN_SIZE, SUB, tileEl } from "/assets/common
 import { STYLES } from "/assets/viz.js";
 import { autoSection } from "/assets/edit-auto.js";
 import { barSection } from "/assets/edit-bar.js";
+import { recordControl } from "/assets/edit-record.js";
 import { applyStatic, lang, LANGS, register, setLang, t } from "/assets/i18n.js";
 import en from "/assets/locale-edit-en.js";
 import it from "/assets/locale-edit-it.js";
@@ -684,6 +685,7 @@ const stepsSection = (title, list, hint) => [
     "aria-label": t("edit.step.add"),
     onchange: (e) => { if (!e.target.value) return; list.push(STEP_DEFAULTS[e.target.value]()); touch(); renderInspector(); },
   }, h("option", { value: "" }, t("edit.step.addOption")), ...Object.entries(STEP_TYPES).map(([type, name]) => h("option", { value: type }, name))),
+  recordControl({ list, api, touch, rerender: renderInspector }),
 ];
 
 function renderInspector() {

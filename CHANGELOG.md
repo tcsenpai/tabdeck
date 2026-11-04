@@ -13,6 +13,10 @@ All notable changes. Newest first. The project is early and has no tagged releas
 - **Info bar:** up to six system chips (CPU, RAM, battery, disk, volume, uptime, load, clock) in the
   pad's bottom bar, chosen in the editor. Stock macOS tools only, cached for 2 s, polled every 5 s
   while the tab is visible. Hidden on narrow screens.
+- **Macro recording:** a Record button on every step list. The Mac listens (listen-only event tap,
+  `tools/recorder.swift`) to your keys and clicks and the editor appends them as `keys`, `text`,
+  `click` and `delay` steps. Needs the macOS Input Monitoring permission for the app that runs the
+  server; the server never records anything the editor did not start (120 s limit, editor only).
 - **Tablet profiles:** pages can be shown on one tablet only (`?profile=<id>`, remembered per tablet).
 - **PWA manifest and icons.** Chrome offers a real install only in a secure context (https or
   localhost); on a plain `http://LAN-IP` address use ChromeOS "Open as window".

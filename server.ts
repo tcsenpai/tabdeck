@@ -6,6 +6,7 @@ import { createState } from "./lib/state.ts";
 import { catalog, macScript } from "./lib/macos.ts";
 import { APP_PRESETS, createContext, matchRule } from "./lib/context.ts";
 import { createInfo } from "./lib/info.ts";
+import { createRecorder } from "./lib/recorder.ts";
 import { createRadio, radioCommand } from "./lib/radio.ts";
 import { createViz, sseResponse } from "./lib/viz.ts";
 import { editorAllowed, sameOriginOk } from "./lib/guard.ts";
@@ -28,6 +29,8 @@ const viz = createViz({ dir: DATA_DIR, helper: process.env.VIZ_HELPER?.trim() ? 
 const hasViz = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "viz"));
 const frontmost = createContext(); // which app is in front on the Mac (automatic pages, editor "detect")
 const info = createInfo();
+// RECORDER_HELPER replaces the compiled helper's argv (tests: `recorder --test-script`, which never touches the input tap).
+const recorder = createRecorder({ dir: DATA_DIR, helper: process.env.RECORDER_HELPER?.trim() ? process.env.RECORDER_HELPER.trim().split(/\s+/) : undefined }); // macro recording: listen-only input tap, editor only
 // Where the pad's dashboard button goes. "" = the same host on port 8420; "off" hides the button.
 // Only http(s) URLs are accepted: the value ends up in window.open() on the tablet.
 const KIOSK_URL = (() => {
@@ -94,7 +97,7 @@ const server = Bun.serve({
         return new Response(f, { headers: { ...noCache, "Content-Type": "application/manifest+json" } });
       }
 
-      if (path === "/edit" || path === "/api/actions" || path === "/api/macscript" || path === "/api/presets" || path === "/api/context" || path.startsWith("/api/config") || path === "/api/test") {
+      if (path === "/edit" || path === "/api/actions" || path === "/api/macscript" || path === "/api/presets" || path === "/api/context" || path.startsWith("/api/record") || path.startsWith("/api/config") || path === "/api/test") {
         if (!editorAllowed(host, srv.requestIP(req)?.address, localIps())) {
           return path === "/edit"
             ? new Response(FORBIDDEN_HTML, { status: 403, headers: { "Content-Type": "text/html; charset=utf-8" } })
@@ -110,6 +113,10 @@ const server = Bun.serve({
         if (method === "GET" && path === "/api/actions") return json(catalog());
         if (method === "GET" && path === "/api/presets") return json(APP_PRESETS);
         if (method === "GET" && path === "/api/context") return json(await frontmost.get());
+        if (method === "GET" && path === "/api/record") return json(recorder.status());
+        if (method === "POST" && path === "/api/record/start") { recorder.start(); return json(recorder.status()); }
+        if (method === "POST" && path === "/api/record/stop") return json({ steps: recorder.stop() });
+        if (method === "POST" && path === "/api/record/cancel") { recorder.cancel(); return json(recorder.status()); }
         if (method === "POST" && path === "/api/macscript") {
           // The AppleScript a "mac" step generates, so the editor can show/convert it.
           const body = await readJson(req);
@@ -200,5 +207,6 @@ console.log(`Macro pad:  http://localhost:${server.port}/   (editor: /edit)`);
 process.on("exit", () => {
   radio.stop();
   viz.stop();
+  recorder.cancel();
 });
 for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => process.exit(0));
