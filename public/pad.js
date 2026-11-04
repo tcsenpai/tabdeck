@@ -322,6 +322,8 @@ const glowOn = () => !!state.cfg?.glow && localStorage.getItem("pad.glow") === "
 // Mic corners: only the corners react to noise, like a mechanical keyboard's lights. They can run together with
 // the glow. The editor may force the source for every tablet (config micSource); otherwise each tablet's tap
 // cycles off → this tablet's microphone → the Mac's microphone → off.
+// The pad's HTTPS address (self-signed): the only way to get the tablet's microphone without browser flags.
+const httpsUrl = () => `https://${location.hostname}:${state.cfg?.https || 8443}/`;
 const micMode = () => {
   const m = localStorage.getItem("pad.mic");
   if (!state.cfg?.micCorners || !(m === "tablet" || m === "mac" || m === "on")) return "";
@@ -351,7 +353,7 @@ function paintGlow() {
   setCorners(micMode(), (code) => {
     localStorage.removeItem("pad.mic");
     paintGlow();
-    toast(t(code === "no-mic-api" ? "pad.mic.insecure" : "pad.mic.denied"), true);
+    toast(t(code === "no-mic-api" ? "pad.mic.insecure" : "pad.mic.denied", { url: httpsUrl() }), true);
   });
 }
 $("glow").addEventListener("click", () => {
@@ -370,7 +372,7 @@ $("mic").addEventListener("click", () => {
   let nextMode = { "": "tablet", tablet: "mac", mac: "" }[cur];
   if (nextMode === "tablet" && !navigator.mediaDevices?.getUserMedia) {
     nextMode = "mac"; // insecure origin: the browser hides the microphone, so go straight to the Mac's
-    toast(t("pad.mic.insecure"));
+    toast(t("pad.mic.insecure", { url: httpsUrl() }));
   }
   if (nextMode) localStorage.setItem("pad.mic", nextMode);
   else localStorage.removeItem("pad.mic");

@@ -138,8 +138,8 @@ Terminal), because launchd starts the process.
 - **Mic corners:** only the pad's four corners react to noise, like a mechanical keyboard's lights:
   each key click, tap or clap flashes the next corner, and the level adds a faint glow. Turn on
   "Offer the mic corners" in the editor; each tablet then cycles the **◩** bar button: off, **this
-  tablet's microphone** (analysed in the browser, nothing is sent; browsers offer it only over https
-  or localhost, otherwise allow the pad's address in `chrome://flags/#unsafely-treat-insecure-origin-as-secure`),
+  tablet's microphone** (analysed in the browser, nothing is sent; browsers offer it
+  only over https: the server also listens on **https://<mac-ip>:8443/** with a self-signed certificate generated into `data/` (`HTTPS_PORT=off` disables it); open that address once on the tablet, tap Advanced → Proceed, and use ◩ there),
   or **the Mac's microphone** (`tools/mic.swift`, compiled on first use, analysed on the Mac; the
   server streams two numbers per frame, never audio, and listens only while a tablet has it on;
   macOS asks once for the **Microphone** permission). It can run together with the ambient glow (which dims a little); the editor can also force the microphone source for every tablet.

@@ -231,8 +231,7 @@ Solo i quattro angoli del pad reagiscono al rumore, come le luci di una tastiera
 click di tasto, tocco o battito di mani accende l'angolo successivo, e il livello aggiunge un
 bagliore leggero. Attiva «Offri gli angoli a microfono» nell'editor; ogni tablet alterna col
 pulsante **◩** della barra: spento, **microfono del tablet** (analizzato nel browser, non viene
-inviato nulla; il browser lo offre solo su https o localhost, altrimenti consenti l'indirizzo del
-pad in `chrome://flags/#unsafely-treat-insecure-origin-as-secure`), oppure **microfono del Mac**
+inviato nulla; il browser lo offre solo su https: il server ascolta anche su **https://<ip-mac>:8443/** con un certificato autofirmato generato in `data/` (`HTTPS_PORT=off` lo disabilita); sul tablet apri quell'indirizzo una volta e tocca Avanzate → Procedi, poi usa ◩ lì), oppure **microfono del Mac**
 (`tools/mic.swift`, compilato al primo uso, analizzato sul Mac; il server invia due numeri per
 frame, mai audio, e ascolta solo finché un tablet l'ha acceso; macOS chiede una volta il permesso
 **Microfono**). Può andare insieme all'alone ambientale (che si abbassa un poco); l'editor può anche forzare la sorgente del microfono per tutti i tablet. `MIC_HELPER="comando"` sostituisce

@@ -1,6 +1,8 @@
 // Macro pad: a single Bun process running on the Mac.
 //   /        touch pad for the tablet (anyone on the LAN: can only press already-defined buttons)
 //   /edit    editor (Mac only, via localhost)
+import type { Server } from "bun";
+import { ensureCert } from "./lib/tls.ts";
 import { ConfigError, createStore, faderValue, publicView, validateStep, validateSteps, type Button, type Step } from "./lib/config.ts";
 import { createState } from "./lib/state.ts";
 import { catalog, macScript } from "./lib/macos.ts";
@@ -102,11 +104,8 @@ const FORBIDDEN_HTML = `<!doctype html><html lang="en"><meta charset="utf-8"><me
 <p>The editor defines commands that run on the Mac, so it only opens from the Mac itself, at
 <code>http://localhost:${PORT}/edit</code>.</p><p><a style="color:#7aa2ff" href="/">← Back to the pad</a></p></div>`;
 
-const server = Bun.serve({
-  port: PORT,
-  hostname: HOST,
-  idleTimeout: 60,
-  async fetch(req, srv) {
+// One handler for the plain-HTTP listener and the optional HTTPS one.
+async function handle(req: Request, srv: Server): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
     const method = req.method;
@@ -173,7 +172,7 @@ const server = Bun.serve({
         return serveFile(name);
       }
 
-      if (method === "GET" && path === "/api/pad") return json({ rev: store.rev, kiosk: KIOSK_URL, ...publicView(store.config) });
+      if (method === "GET" && path === "/api/pad") return json({ rev: store.rev, kiosk: KIOSK_URL, https: httpsPort, ...publicView(store.config) });
       if (method === "GET" && path === "/api/rev") return json({ rev: store.rev });
       // The chips come from pad.json, never from the request: a client cannot choose what the server runs.
       if (method === "GET" && path === "/api/info") return json(await info.read(store.config.bar));
@@ -262,10 +261,24 @@ const server = Bun.serve({
     }
 
     return json({ error: "Not found" }, 404);
-  },
-});
+}
 
-console.log(`Macro pad:  http://localhost:${server.port}/   (editor: /edit)`);
+const server = Bun.serve({ port: PORT, hostname: HOST, idleTimeout: 60, fetch: handle });
+
+// HTTPS (self-signed) so a tablet's browser offers its microphone. HTTPS_PORT=off disables it; default 8443.
+// A failure here (port taken, no openssl) never stops the plain listener.
+const HTTPS_PORT = process.env.HTTPS_PORT === "off" ? 0 : Number(process.env.HTTPS_PORT) || 8443;
+let httpsPort = 0;
+if (HTTPS_PORT) {
+  try {
+    const tls = ensureCert(DATA_DIR, localIps());
+    httpsPort = Bun.serve({ port: HTTPS_PORT, hostname: HOST, idleTimeout: 60, tls, fetch: handle }).port ?? 0;
+  } catch (e) {
+    console.error(`HTTPS listener off: ${(e as Error).message}`);
+  }
+}
+
+console.log(`Macro pad:  http://localhost:${server.port}/   (editor: /edit)${httpsPort ? `   https on :${httpsPort}` : ""}`);
 
 // Never leave a player running behind us.
 process.on("exit", () => {

@@ -18,7 +18,7 @@ export default {
   "pad.glow": "Alone ambientale che segue l'audio del Mac",
   "pad.fx": "Effetti overlay sul pad (tocca per spegnere/accendere su questo tablet)",
   "pad.mic": "Angoli che reagiscono al rumore: tocca per alternare spento / microfono del tablet / microfono del Mac",
-  "pad.mic.insecure": "Questo tablet offre il microfono solo su https o localhost, quindi uso quello del Mac. Per usare quello del tablet, consenti questo indirizzo in chrome://flags/#unsafely-treat-insecure-origin-as-secure.",
+  "pad.mic.insecure": "Questo tablet offre il microfono solo su https. Apri {url} (tocca Avanzate → Procedi, una volta), poi usa ◩ lì.",
   "pad.mic.denied": "Microfono non consentito su questo tablet.",
   "bar.cpu": "CPU", "bar.mem": "RAM", "bar.battery": "BATT", "bar.disk": "DISCO", "bar.volume": "VOL", "bar.uptime": "ATTIV", "bar.load": "CARICO", "bar.clock": "ORA",
   "pad.radio.live": "IN ONDA",
