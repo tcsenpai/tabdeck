@@ -26,7 +26,8 @@ bun start          # oppure: bun run dev (riavvia a ogni modifica del server)
 Sul tablet apri l'indirizzo mostrato in alto a destra nell'editor (clic = copia).
 A tutto schermo: pulsante ⛶ in basso a destra.
 
-Variabili: `PORT` (8430), `HOST` (0.0.0.0), `DATA_DIR` (`./data`), `KIOSK_URL` (dove porta il
+Variabili: `PORT` (8430), `HOST` (0.0.0.0), `DATA_DIR` (`./data`), `HTTPS_PORT` (8443; `off` disabilita il listener HTTPS, vedi Angoli a microfono),
+`KIOSK_URL` (dove porta il
 pulsante dashboard del pad; predefinito `http://<stesso host>:8420/kiosk`, `off` lo nasconde,
 si accettano solo URL `http(s)://`), `RADIO_PLAYER` (vedi Radio).
 
@@ -184,6 +185,8 @@ variante sta mostrando e il Mac la esegue solo se è ancora quella dell'app in p
 (altrimenti «The app in front changed» e il tile si aggiorna). Usa lo stesso permesso Automazione
 delle pagine automatiche.
 
+![L'ispettore di un tasto con una variante per app: con Zoom in primo piano diventa Muto](docs/screenshots/variants.jpg)
+
 ### Tile decorativi e bordo per tile
 
 Tile solo da vedere (tipo «Decorazione»): orologio con data, dump esadecimale che scorre, radar,
@@ -191,6 +194,15 @@ linea del battito, banner con glitch (mostra il testo del tile), luci di stato d
 non fanno nulla; si animano solo con transform/opacity. Partono senza bordo. Ogni tile ha
 l'interruttore **Bordo**: spento toglie cornice e corpo 3D e lascia solo il contenuto sospeso sullo
 sfondo (vale per tasti, cursori, radio, ...).
+
+Altri due tile sono **sensibili al suono**: *dump esadecimale che reagisce al suono* (`hexmic`:
+scorre più veloce e si illumina col livello, un click lo fa scattare) e *luci da rack che
+reagiscono al suono* (`rackmic`). Ascoltano tramite lo stesso pulsante **◩** degli angoli a
+microfono (stessa sorgente, stessa sensibilità) e il flusso del microfono viene aperto anche per
+loro, anche se gli angoli non sono offerti; con ◩ spento si calmano. Nell'editor l'anteprima è
+quella dei semplici hex / rack.
+
+![Tile decorativi: orologio, dump hex, radar, battito, banner, luci da rack; un tasto senza bordo](docs/screenshots/deco.jpg)
 
 ### Radio preferite (radio-browser.info)
 
@@ -237,6 +249,14 @@ frame, mai audio, e ascolta solo finché un tablet l'ha acceso; macOS chiede una
 **Microfono**). Può andare insieme all'alone ambientale (che si abbassa un poco); l'editor può anche forzare la sorgente del microfono per tutti i tablet. `MIC_HELPER="comando"` sostituisce
 l'helper (per esempio `tools/mic --test-script`).
 
+Un cursore **sensibilità** (`micSensitivity`, 0–100) nell'editor regola sia gli angoli sia i tile
+sensibili al suono (`hexmic`, `rackmic`), che usano la stessa sorgente e la stessa sensibilità. Dove
+il permesso Microfono del Mac si può concedere va bene, ma sotto launchd non si può (su
+questa macchina macOS non mostra mai la richiesta al processo avviato da launchd): lì **funziona il
+microfono del tablet via https**.
+
+![Angoli a microfono: un angolo si accende col rumore, un tile rack reagisce al suono](docs/screenshots/mic.jpg)
+
 ### Effetti overlay
 
 Livelli a tutto schermo sopra l'intero pad, scelti nell'editor (niente selezionato → «Effetti
@@ -245,6 +265,8 @@ overlay»): **CRT** (angoli scuri da vetro curvo, sfarfallio; le linee di scansi
 **bordi cromatici**. Solo CSS, si animano soltanto opacity/transform (niente blur né blend mode), i
 tocchi passano attraverso, `prefers-reduced-motion` ferma le animazioni. Accesi di default una volta
 scelti; ogni tablet può spegnerli col pulsante **▤** della barra.
+
+![Effetti overlay (CRT, barra di scansione, vignettatura, bordi cromatici) con l'alone ambientale](docs/screenshots/fx-glow.jpg)
 
 ### Barra info
 
@@ -282,7 +304,7 @@ Il pad ha manifest e icone. Chrome propone una vera installazione solo in un con
 | Pagine automatiche (titoli finestra, URL dei browser) | Automazione: System Events e ogni browser (chiesto una volta) |
 | Visualizzatore, alone ambientale | Registrazione audio di sistema |
 | Registrazione macro | Monitoraggio input |
-| Angoli a microfono, microfono del Mac | Microfono (quello del tablet non richiede nulla sul Mac) |
+| Angoli a microfono, tile sensibili al suono col microfono del Mac | Microfono, solo per quello del Mac (quello del tablet non richiede nulla sul Mac, ma lo chiede il browser, e solo su https). Non concedibile sotto launchd su questa macchina: usa quello del tablet |
 | Barra info, radio preferite, profili | nessuno |
 
 ## Modello di sicurezza
@@ -333,7 +355,8 @@ lib/stations.ts    lista chiusa degli stream radio
 lib/viz.ts         avvia l'helper audio e distribuisce gli spettri (SSE)
 lib/context.ts     app/finestra/URL in primo piano e regole delle pagine automatiche
 lib/info.ts        letture della barra info (CPU, RAM, batteria, ...)
-lib/mic.ts         livello/click del microfono del Mac per gli angoli
+lib/mic.ts         livello/click del microfono del Mac (angoli, tile sensibili al suono)
+lib/tls.ts         certificato autofirmato per il listener HTTPS
 lib/recorder.ts    registratore di macro: avvia l'helper, trasforma gli eventi in passi
 lib/radiobrowser.ts  client di radio-browser.info (ricerca, risoluzione, controlli URL)
 tools/sysaudio.swift  cattura dell'audio di sistema + FFT
@@ -341,15 +364,17 @@ tools/recorder.swift  registratore di tasti e clic (sola lettura)
 tools/mic.swift    livello del microfono + rilevatore di click (solo numeri)
 docs/radio-browser-notes.md  cosa si è scoperto sull'API dell'elenco
 public/pad.*       pad per il tablet
-public/edit.*      editor (edit-auto/-bar/-radio/-record.js: i suoi pannelli)
+public/edit.*      editor (edit-auto/-bar/-radio/-record/-variants.js: i suoi pannelli)
 public/bar.js      indicatori info sul pad
 public/fx.js       effetti overlay (fx.css gli stili)
-public/corners.js  angoli a microfono (sorgente tablet o Mac)
-public/deco.js     tile decorativi (markup); deco.css gli stili
-public/edit-variants.js  pannello delle varianti per app
+public/corners.js  angoli a microfono e flusso del microfono condiviso (sorgente tablet o Mac); corners.css
+public/deco.js     tile decorativi (markup, quelli sensibili al suono); deco.css, pad-deco.css: stili
+public/glow.js     alone ambientale (glow.css gli stili)
 public/templates.js  pagine di partenza per le pagine automatiche
 public/common.js   DOM helper + tile condiviso pad/editor
-public/i18n.js     traduzioni (en/it)
+public/i18n.js     traduzioni (en/it; locale-pad-*.js, locale-edit-*.js contengono i testi)
+public/viz.js, radio.js  visualizzatore e widget radio (viz.css, radio.css)
+public/manifest.webmanifest, icon-*.png, icon.svg  PWA
 tests/             bun test
 ```
 

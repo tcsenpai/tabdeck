@@ -19,12 +19,17 @@ All notable changes. Newest first. The project is early and has no tagged releas
   `lib/tls.ts` into `data/`, regenerated when the Mac's addresses change: gives the tablet a secure context for its microphone.
 - **Mic corners:** only the four corners flash with microphone noise (key clicks, taps), from the
   tablet's own microphone (browser-side analysis) or the Mac's (`tools/mic.swift`, numbers only over
-  `/api/mic`). Offered by the editor, chosen per tablet with the ◩ bar button, instead of the glow.
+  `/api/mic`). Offered by the editor (which can force the source, `micSource`, and has a sensitivity
+  slider, `micSensitivity`), chosen per tablet with the ◩ bar button. Under launchd the Mac's
+  microphone permission cannot be granted on the author's machine: the tablet's microphone over
+  https is the working path.
 - **Per-app key variants:** a key can look and act differently (or disappear) depending on the app in
   front on the Mac; first match wins, any number of keys per app. The state endpoint sends variant
   indexes only; a tap carries the variant it shows and is refused with 409 if the app in front
   changed. `matchRule` is now generic over any rule shape.
-- **Decoration tiles** (kind `deco`: clock, hex, radar, pulse, banner, leds) and a **per-tile
+- **Decoration tiles** (kind `deco`: clock, hex, radar, pulse, banner, leds, plus sound-reactive
+  `hexmic` and `rackmic` that follow the microphone through the ◩ button, same source and
+  sensitivity as the mic corners; `/api/mic` is opened for them too) and a **per-tile
   border switch** (`border`, default on; decorations default off).
 - **Glow follows the beat:** the glow rescales each zone against its own recent floor and ceiling,
   because the helper's levels sit high and flat for most music and the glow looked static.

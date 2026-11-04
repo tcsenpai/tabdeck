@@ -57,6 +57,7 @@ Open the address shown at the top right of the editor on the tablet (click = cop
 Fullscreen: the ⛶ button at the bottom right.
 
 Environment variables: `PORT` (8430), `HOST` (0.0.0.0), `DATA_DIR` (`./data`),
+`HTTPS_PORT` (8443; `off` disables the HTTPS listener, see Mic corners),
 `KIOSK_URL` (where the pad's dashboard button goes; default `http://<same host>:8420/kiosk`,
 `off` hides the button, only `http(s)://` values are accepted), `RADIO_PLAYER` (see Radio).
 
@@ -143,12 +144,21 @@ Terminal), because launchd starts the process.
   or **the Mac's microphone** (`tools/mic.swift`, compiled on first use, analysed on the Mac; the
   server streams two numbers per frame, never audio, and listens only while a tablet has it on;
   macOS asks once for the **Microphone** permission). It can run together with the ambient glow (which dims a little); the editor can also force the microphone source for every tablet.
+  A **sensitivity** slider (`micSensitivity`, 0–100) in the editor scales both the corners and the
+  sound-reactive tiles. The sound-reactive decoration tiles (`hexmic`, `rackmic`) use the same
+  source and sensitivity. Where the Mac's microphone permission can be granted this is fine, but under
+  launchd it cannot be (on the author's machine macOS never offers the prompt to the launchd
+  process), so **the tablet's microphone over https is the path that works** there.
   `MIC_HELPER="cmd args"` replaces the helper (e.g. `tools/mic --test-script`).
+
+  ![Mic corners: a corner flashes with noise, a rack tile reacts to sound](docs/screenshots/mic.jpg)
 - **Overlay effects:** full-screen layers over the whole pad, picked in the editor (nothing selected →
   "Overlay effects"): **CRT** (curved-glass dark corners, flicker; the scanlines are the pad's own), **scan bar**, **glitch** (jumping
   strips and a colour flash), **film grain**, **heavy vignette**, **chromatic edges**. Pure CSS, only
   opacity/transform animate (no blur, no blend modes), touches pass through, `prefers-reduced-motion`
   stops the animations. On by default once chosen; each tablet can switch them off with the **▤** bar button.
+
+  ![Overlay effects (CRT, scan bar, vignette, chromatic edges) with the ambient glow](docs/screenshots/fx-glow.jpg)
 - **Visualizer tile:** a spectrum of whatever the Mac is playing (any app), drawn on the tablet
   like the old media-player visualizations, in five styles you pick per tile (bars with falling peak caps, mirror, segmented blocks, wave, ring), resizable, several
   allowed. `tools/sysaudio.swift` captures the system output with a Core Audio *process tap*
@@ -167,10 +177,18 @@ Terminal), because launchd starts the process.
   to show, never the app: on a tap it says which variant it is showing and the Mac runs it only if
   that is still the one for the app in front (otherwise "The app in front changed", and the tile
   refreshes). Reuses the Automation permission of the automatic pages.
+
+  ![A key's inspector with a per-app variant: Zoom in front turns it into Mute](docs/screenshots/variants.jpg)
 - **Decoration tiles:** display-only cyberpunk filler (kind "Decoration"): clock with date, scrolling
   hex dump, radar, heartbeat line, glitching banner (shows the tile's text), rack status lights.
   Touching them does nothing; they animate with transform/opacity only. Decorations start
-  borderless.
+  borderless. Two more are **sound-reactive**: *hex dump that reacts to sound* (`hexmic`: it
+  scrolls faster and brightens with the level, a click makes it surge) and *rack lights that react
+  to sound* (`rackmic`). They listen through the same **◩** button as the mic corners (same source,
+  same sensitivity) and the microphone stream is opened for them too, even with the corners not
+  offered; with ◩ off they settle. In the editor they preview as the plain hex / rack.
+
+  ![Decoration tiles: clock, hex dump, radar, pulse, banner, rack lights; a borderless key](docs/screenshots/deco.jpg)
 - **Border on/off per tile:** every tile has a "Border" switch. Off removes the frame and 3D body and
   leaves just the content floating on the background (works for keys, faders, the radio, ...).
 - **Radio favourites:** search the community directory [radio-browser.info](https://www.radio-browser.info)
@@ -262,7 +280,7 @@ Events and so need the Accessibility permission.
 | Automatic pages (window titles, browser URLs) | Automation: System Events, each browser (asked once) |
 | Visualizer, ambient glow | System Audio Recording |
 | Macro recording | Input Monitoring |
-| Mic corners, Mac's microphone | Microphone (the tablet's own needs none on the Mac) |
+| Mic corners, sound-reactive tiles with the Mac's microphone | Microphone, only for the Mac's microphone (the tablet's own needs none on the Mac, but the browser asks, and only over https). Not grantable under launchd on the author's machine: use the tablet's |
 | Info bar, radio favourites, profiles | none |
 
 ### Accessibility permission
@@ -322,7 +340,8 @@ lib/stations.ts    the radio stream whitelist
 lib/viz.ts         runs the audio helper and fans spectrum frames out (SSE)
 lib/context.ts     frontmost app/window/URL probe and the automatic-page rules
 lib/info.ts        info-bar readers (CPU, RAM, battery, ...)
-lib/mic.ts         Mac microphone level/onset stream for the mic corners
+lib/mic.ts         Mac microphone level/onset stream (mic corners, sound-reactive tiles)
+lib/tls.ts         self-signed certificate for the HTTPS listener
 lib/recorder.ts    macro recorder: runs the helper, turns events into steps
 lib/radiobrowser.ts  radio-browser.info client (search, resolve, URL checks)
 tools/sysaudio.swift  system-audio capture + FFT helper
@@ -330,15 +349,17 @@ tools/recorder.swift  listen-only key/click recorder
 tools/mic.swift    microphone level + click detector (numbers only)
 docs/radio-browser-notes.md  what was learnt about the directory's API
 public/pad.*       the pad for the tablet
-public/edit.*      the editor (edit-auto/-bar/-radio/-record.js: its panels)
+public/edit.*      the editor (edit-auto/-bar/-radio/-record/-variants.js: its panels)
 public/bar.js      info chips on the pad
 public/fx.js       overlay effects (fx.css has the styles)
-public/corners.js  mic corners (tablet or Mac source)
-public/deco.js     decoration tiles (markup); deco.css has the styles
-public/edit-variants.js  the per-app variants panel
+public/corners.js  mic corners and the shared microphone feed (tablet or Mac source); corners.css
+public/deco.js     decoration tiles (markup, sound-reactive ones); deco.css, pad-deco.css: styles
+public/glow.js     ambient glow (glow.css has the styles)
 public/templates.js  starter pages for automatic pages
 public/common.js   DOM helper + tile shared by pad and editor
-public/i18n.js     translations (en/it)
+public/i18n.js     translations (en/it; locale-pad-*.js, locale-edit-*.js hold the strings)
+public/viz.js, radio.js  visualizer and radio widget (viz.css, radio.css)
+public/manifest.webmanifest, icon-*.png, icon.svg  PWA
 tests/             bun test
 ```
 
