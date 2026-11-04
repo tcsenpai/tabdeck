@@ -115,6 +115,12 @@ Terminal), because launchd starts the process.
   that was killed is stopped at the next start. One radio per pad. Titles come from Nightride's
   public `/meta` feed, read by the browser. Streams belong to Nightride FM: this project is not
   affiliated with them, so please support the station.
+- **Radio station tile (1 cell):** a play/stop key for one station, such as **Virgin Radio**
+  (the public AAC stream of its own web player, `icecast.unitedradio.it/Virgin.aac`; no track
+  title is published, the widget shows "LIVE"). One tap plays it, a second tap stops it, another
+  tile or the widget switches station. It lights up (sunk in, green LED) while it plays and has the
+  same **MAC/TAB** badge: all radio tiles share one player and one output. Station list: the 11
+  Nightride FM stations plus Virgin Radio (`lib/stations.ts`).
 - **Mac actions catalog:** typed templates that generate AppleScript (see below).
 - **`when` guard** and **`continueOnError`** (see below).
 - **Language:** English or Italian (see below).
@@ -189,7 +195,7 @@ The server listens on the LAN and a button can run commands on your Mac. So:
 - **The pad has no authentication**: anyone on your LAN can press the buttons. Use
   *confirm* for dangerous buttons, and put a firewall in front if the network is untrusted.
 - `POST /api/radio` (the radio widget) is open to the pad like the press endpoints, but it
-  only accepts a station from a fixed list of 11 names and an output (`mac`/`tablet`): it can
+  only accepts a station from a fixed list of 12 names and an output (`mac`/`tablet`): it can
   never make the server open an arbitrary URL or run anything else.
 
 ## Data

@@ -144,3 +144,20 @@ describe("radio widget", () => {
     expect(validateConfig(c).pages[0].buttons[0].w).toBe(1);
   });
 });
+
+describe("station tile", () => {
+  test("kind station needs a known station, spans one column and has no actions of its own", async () => {
+    const { validateConfig, ConfigError, publicView } = await import("../lib/config.ts");
+    const mk = (over: object) => {
+      const c = structuredClone(seedConfig());
+      Object.assign(c.pages[0].buttons[0], { kind: "station", steps: [{ type: "shell", cmd: "true", cwd: "", timeout: 5 }], ...over });
+      return c;
+    };
+    const ok = validateConfig(mk({ station: "virgin", w: 3 })).pages[0].buttons[0];
+    expect(ok).toMatchObject({ kind: "station", station: "virgin", w: 1, steps: [], hold: [], led: "", toggle: false });
+    expect(publicView(validateConfig(mk({ station: "virgin" }))).pages[0].buttons[0]).toMatchObject({ kind: "station", station: "virgin" });
+    for (const bad of [{}, { station: "nope" }, { station: "" }, { station: 5 }]) expect(() => validateConfig(mk(bad))).toThrow(ConfigError);
+    // a plain key never carries a station
+    expect(validateConfig(seedConfig()).pages[0].buttons[0].station).toBe("");
+  });
+});

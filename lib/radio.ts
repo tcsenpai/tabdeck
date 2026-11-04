@@ -5,11 +5,7 @@
 import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import type { Subprocess } from "bun";
 import { ConfigError } from "./config.ts";
-
-export const STATIONS = [
-  "nightride", "chillsynth", "datawave", "spacesynth", "darksynth", "horrorsynth",
-  "ebsm", "rekt", "rektory", "rektify", "d-notive",
-] as const;
+import { isStation, stationUrl } from "./stations.ts";
 export type Output = "mac" | "tablet";
 export type Status = "idle" | "loading" | "playing" | "error";
 
@@ -20,7 +16,6 @@ export interface RadioState {
   error?: string;
 }
 
-const streamUrl = (id: string) => `https://stream.nightride.fm/${id}.mp3`;
 const SEARCH_DIRS = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"];
 const MAX_QUICK_FAILS = 5; // exits within QUICK_MS, in a row, before giving up
 
@@ -43,10 +38,14 @@ export function findPlayer(): string[] | null {
 export function radioCommand(raw: unknown): RadioCommand {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new ConfigError("expected an object");
   const o = raw as Record<string, unknown>;
-  const cmd: { station?: string; output?: Output; toggle?: true } = {};
+  const cmd: RadioCommand = {};
   if (o.station !== undefined) {
-    if (typeof o.station !== "string" || !(STATIONS as readonly string[]).includes(o.station)) throw new ConfigError("Unknown station");
+    if (!isStation(o.station)) throw new ConfigError("Unknown station");
     cmd.station = o.station;
+  }
+  if (o.tune !== undefined) {
+    if (!isStation(o.tune)) throw new ConfigError("Unknown station");
+    cmd.tune = o.tune;
   }
   if (o.output !== undefined) {
     if (o.output !== "mac" && o.output !== "tablet") throw new ConfigError("output: mac/tablet");
@@ -61,6 +60,7 @@ export function radioCommand(raw: unknown): RadioCommand {
 
 export interface RadioCommand {
   station?: string;
+  tune?: string; // play this station, or stop if it is already the one playing on the Mac
   output?: Output;
   toggle?: true;
 }
@@ -69,6 +69,7 @@ export interface RadioCommand {
 export interface Radio {
   get(): RadioState;
   toggle(): void;
+  tune(id: string): void;
   setStation(id: string): void;
   setOutput(o: Output): void;
   stop(): void;
@@ -89,7 +90,7 @@ export function createRadio(dir: string, opts: RadioOptions = {}): Radio {
   const retryMs = opts.retryMs ?? 2000;
   const quickMs = opts.quickMs ?? 5000;
 
-  let station: string = STATIONS[0];
+  let station = "nightride";
   let output: Output = "mac";
   try {
     const saved: unknown = JSON.parse(readFileSync(file, "utf8"));
@@ -140,7 +141,7 @@ export function createRadio(dir: string, opts: RadioOptions = {}): Radio {
     }
     error = undefined;
     status = "loading";
-    const p = Bun.spawn([...player, streamUrl(station)], { stdin: "ignore", stdout: "ignore", stderr: "ignore", detached: true });
+    const p = Bun.spawn([...player, stationUrl(station)], { stdin: "ignore", stdout: "ignore", stderr: "ignore", detached: true });
     proc = p;
     const t0 = Date.now();
     writeFileSync(pidFile, String(p.pid));
@@ -196,10 +197,19 @@ export function createRadio(dir: string, opts: RadioOptions = {}): Radio {
       output = o;
       persist();
     },
+    // One-tap play/stop for a station tile. On the Mac: stop if this station is the one playing,
+    // otherwise switch to it and play. With the tablet as output only the choice is stored
+    // (the browser plays it).
+    tune(id: string) {
+      if (output === "mac" && want && station === id) return stop();
+      api.setStation(id);
+      if (output === "mac" && !want) api.toggle();
+    },
     stop,
     apply(cmd: RadioCommand): RadioState {
       if (cmd.output) api.setOutput(cmd.output);
       if (cmd.station) api.setStation(cmd.station);
+      if (cmd.tune) api.tune(cmd.tune);
       if (cmd.toggle) api.toggle();
       return api.get();
     },

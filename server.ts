@@ -18,7 +18,7 @@ const MAX_BODY = 512 * 1024;
 const store = createStore(`${DATA_DIR}/pad.json`);
 const state = createState(() => store.config, () => store.rev, `${DATA_DIR}/toggles.json`);
 const radio = createRadio(DATA_DIR);
-const hasRadio = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "radio"));
+const hasRadio = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "radio" || b.kind === "station"));
 // Where the pad's dashboard button goes. "" = the same host on port 8420; "off" hides the button.
 // Only http(s) URLs are accepted: the value ends up in window.open() on the tablet.
 const KIOSK_URL = (() => {

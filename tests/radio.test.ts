@@ -91,3 +91,39 @@ describe("Mac player", () => {
     await until(() => !alive(orphan.pid), "orphan to be stopped");
   });
 });
+
+describe("station tiles", () => {
+  test("the whitelist includes Virgin Radio and rejects anything else", async () => {
+    const { isStation, stationUrl } = await import("../lib/stations.ts");
+    expect(isStation("virgin")).toBe(true);
+    expect(stationUrl("virgin")).toBe("https://icecast.unitedradio.it/Virgin.aac");
+    expect(stationUrl("darksynth")).toBe("https://stream.nightride.fm/darksynth.mp3");
+    for (const bad of ["Virgin", "virgin ", "http://evil", "", 0, null, undefined]) expect(isStation(bad)).toBe(false);
+    expect(radioCommand({ tune: "virgin" })).toEqual({ tune: "virgin" });
+    expect(() => radioCommand({ tune: "evil" })).toThrow(ConfigError);
+  });
+  test("tune plays a station, stops it on the second tap, and switches between stations", async () => {
+    const dir = tmp();
+    const r = make(dir);
+    r.tune("virgin");
+    expect(r.get()).toMatchObject({ station: "virgin", status: "loading" });
+    const first = pidOf(dir);
+    r.tune("virgin"); // same station again: stop
+    expect(r.get().status).toBe("idle");
+    await until(() => !alive(first), "player to exit");
+    r.tune("virgin");
+    const second = pidOf(dir);
+    r.tune("darksynth"); // other station while playing: switch, keep playing
+    await until(() => !alive(second), "old player to exit");
+    expect(r.get()).toMatchObject({ station: "darksynth", status: "loading" });
+    expect(alive(pidOf(dir))).toBe(true);
+  });
+  test("with the tablet as output, tune only remembers the station", () => {
+    const dir = tmp();
+    const r = make(dir);
+    r.setOutput("tablet");
+    r.tune("virgin");
+    expect(r.get()).toMatchObject({ station: "virgin", output: "tablet", status: "idle" });
+    expect(() => pidOf(dir)).toThrow();
+  });
+});

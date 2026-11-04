@@ -142,3 +142,23 @@
 @media (prefers-reduced-motion: reduce) {
   .tile[data-rd] .rd-eq i, .tile[data-rd="loading"] .rd-play { animation: none; }
 }
+
+/* Station tile (1 cell): play/stop on one station. Lit (sunk in, green LED) while it plays. */
+.tile.station { cursor: pointer; }
+.tile.station .st-out {
+  position: absolute;
+  right: 9cqmin;
+  bottom: 8cqmin;
+  padding: 4px 7px;
+  font: 700 max(9px, 6cqmin) var(--mono);
+  letter-spacing: 0.1em;
+  color: #05060d;
+  cursor: pointer;
+  touch-action: manipulation;
+  background: var(--c);
+  border: 0;
+  border-radius: 3px;
+  opacity: 0.85;
+}
+.tile.station[data-rd="loading"] .led { animation: rdpulse 0.9s ease-in-out infinite; }
+.tile.station[data-rd="error"] { --c: var(--err); }

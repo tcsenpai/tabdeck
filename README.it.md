@@ -32,7 +32,7 @@ si accettano solo URL `http(s)://`), `RADIO_PLAYER` (vedi Radio).
 
 Nella barra in basso del pad: schede delle pagine, puntino di connessione, **↻ ricarica**
 (utile su un tablet kiosk senza barra del browser), **▦ dashboard** (apre il kiosk della
-dashboard in una tab dedicata, riusata alla volta dopo, senza digitare indirizzi sul tablet) e
+dashboard in una tab dedicata, riusata la volta dopo, senza digitare indirizzi sul tablet) e
 **⛶ schermo intero**.
 
 ### Lingua
@@ -139,6 +139,15 @@ server ucciso viene fermato al riavvio successivo. Una sola radio per pad. I tit
 feed pubblico `/meta` di Nightride, letto dal browser. Gli stream sono di Nightride FM: il
 progetto non è affiliato, quindi sostieni la stazione.
 
+### Tile stazione (1 cella)
+
+Un tasto play/stop per una sola stazione, per esempio **Virgin Radio** (lo stream AAC pubblico
+del suo stesso player web, `icecast.unitedradio.it/Virgin.aac`; non pubblica il titolo del brano,
+il widget mostra «IN ONDA»). Un tocco la avvia, un secondo la ferma; un altro tile o il widget
+cambiano stazione. Si accende (affondato, LED verde) mentre suona e ha lo stesso badge
+**MAC/TAB**: tutti i tile radio condividono un solo player e un'unica uscita. Le stazioni sono
+le 11 di Nightride FM più Virgin Radio (`lib/stations.ts`).
+
 ## Modello di sicurezza
 
 Il server ascolta sulla LAN, e un pulsante può eseguire comandi sul Mac. Quindi:
@@ -146,7 +155,7 @@ Il server ascolta sulla LAN, e un pulsante può eseguire comandi sul Mac. Quindi
 - Il tablet può **solo premere pulsanti già definiti**: `GET /api/pad` non contiene mai i
   comandi, `POST /api/run/<id>` esegue solo ciò che sta in `data/pad.json`.
 - `POST /api/radio` (il widget radio) è aperto al pad come le rotte di pressione, ma accetta
-  solo una stazione da una lista fissa di 11 nomi e un'uscita (`mac`/`tablet`): non può far
+  solo una stazione da una lista fissa di 12 nomi e un'uscita (`mac`/`tablet`): non può far
   aprire al server un URL qualsiasi né eseguire altro.
 - **Editor, salvataggio, prova e catalogo azioni** (`/edit`, `/api/config`, `/api/test`,
   `/api/actions`, `/api/macscript`) rispondono solo se la connessione parte dal Mac stesso

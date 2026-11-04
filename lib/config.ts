@@ -5,6 +5,7 @@ import { dirname } from "node:path";
 import { parseKeys } from "./keys.ts";
 import { MOUSE_BUTTONS, type MouseButton } from "./mouse.ts";
 import { normalizeArgs, type Args } from "./macos.ts";
+import { isStation } from "./stations.ts";
 
 export const COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "violet", "pink"] as const;
 export type Color = (typeof COLORS)[number];
@@ -35,7 +36,7 @@ export interface Button {
   label: string;
   icon: string;
   color: Color;
-  kind: "button" | "fader" | "radio";
+  kind: "button" | "fader" | "radio" | "station";
   confirm: boolean;
   showOutput: boolean;
   steps: Step[];
@@ -44,6 +45,7 @@ export interface Button {
   toggle: boolean; // latching: the pad remembers on/off, flipped by each successful tap (ignored when `led` is set)
   fader: Fader; // kind "fader" only
   w: number; // columns spanned: 1, except kind "radio" (2–4)
+  station: string; // kind "station": the station this tile plays/stops (see lib/stations.ts)
 }
 export interface Page {
   id: string;
@@ -207,10 +209,13 @@ export function validateConfig(raw: unknown): PadConfig {
       const col = int(btn.col, `${bw}.col`, 0, cols - 1);
       const row = int(btn.row, `${bw}.row`, 0, rows - 1);
       const kind = btn.kind === undefined ? "button" : btn.kind;
-      if (kind !== "button" && kind !== "fader" && kind !== "radio") throw new ConfigError(`${bw}.kind: button/fader/radio`);
+      if (kind !== "button" && kind !== "fader" && kind !== "radio" && kind !== "station") {
+        throw new ConfigError(`${bw}.kind: button/fader/radio/station`);
+      }
       const isFader = kind === "fader";
       const isRadio = kind === "radio";
-      const inert = isFader || isRadio; // no tap actions of their own
+      const isStationTile = kind === "station";
+      const inert = isFader || isRadio || isStationTile; // no tap actions of their own
       const span = isRadio ? (btn.w === undefined ? 3 : int(btn.w, `${bw}.w`, 2, 4)) : 1;
       if (col + span > cols) throw new ConfigError(`${bw}: does not fit in ${cols} columns`);
       for (let c = col; c < col + span; c++) {
@@ -226,6 +231,8 @@ export function validateConfig(raw: unknown): PadConfig {
       const f = btn.fader === undefined ? {} : obj(btn.fader, `${bw}.fader`);
       const fader = { get: str(f.get, `${bw}.fader.get`, { max: 2000 }), set: str(f.set, `${bw}.fader.set`, { max: 2000 }) };
       if (isFader && !fader.set.trim()) throw new ConfigError(`${bw}.fader.set: required`);
+      const station = isStationTile ? str(btn.station, `${bw}.station`, { max: 20 }) : "";
+      if (isStationTile && !isStation(station)) throw new ConfigError(`${bw}.station: unknown station`);
       return {
         id: bid,
         col,
@@ -242,6 +249,7 @@ export function validateConfig(raw: unknown): PadConfig {
         toggle: !inert && btn.toggle === true,
         fader: isFader ? fader : { get: "", set: "" },
         w: span,
+        station,
       };
     });
     return { id: pid, name: str(page.name, `${w}.name`, { required: true, max: 30 }), cols, rows, buttons };
@@ -268,6 +276,7 @@ export interface PublicButton {
   hasHold: boolean;
   hasLed: boolean;
   w: number;
+  station: string;
 }
 export interface PublicPage extends Omit<Page, "buttons"> {
   buttons: PublicButton[];
@@ -291,6 +300,7 @@ export function publicView(cfg: PadConfig): { pages: PublicPage[] } {
         hasHold: x.hold.length > 0,
         hasLed: x.led.trim() !== "" || x.toggle,
         w: x.w,
+        station: x.station,
       })),
     })),
   };
@@ -301,7 +311,7 @@ const b = (
   extra: Partial<Pick<Button, "confirm" | "showOutput" | "hold" | "led" | "toggle">> = {},
 ): Button => ({
   id, col, row, label, icon, color, kind: "button", confirm: false, showOutput: false, steps,
-  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: 1, ...extra,
+  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: 1, station: "", ...extra,
 });
 
 // Example pad on first start: harmless actions, all editable.
@@ -336,7 +346,7 @@ export function seedConfig(): PadConfig {
           ]),
           {
             id: "volume", col: 2, row: 1, label: "Volume", icon: "🎚️", color: "teal", kind: "fader",
-            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: 1,
+            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: 1, station: "",
             fader: {
               get: "osascript -e 'output volume of (get volume settings)'",
               set: 'osascript -e "set volume output volume $PAD_VALUE"',

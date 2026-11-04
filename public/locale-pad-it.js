@@ -14,6 +14,7 @@ export default {
   "pad.radio.out.tablet": "Suona su questo tablet (tocca per ascoltarla sul Mac)",
   "pad.radio.tuning": "SINTONIA…",
   "pad.radio.idle": "TOCCA PLAY",
+  "pad.radio.live": "IN ONDA",
   "pad.radio.error": "NESSUN SEGNALE",
   "pad.reload": "Ricarica",
   "pad.kiosk": "Apri il kiosk della dashboard",

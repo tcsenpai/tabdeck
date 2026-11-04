@@ -2,6 +2,7 @@ import { api, applyGrid, COLORS, h, tileEl } from "/assets/common.js";
 import { applyStatic, lang, LANGS, register, setLang, t } from "/assets/i18n.js";
 import en from "/assets/locale-edit-en.js";
 import it from "/assets/locale-edit-it.js";
+import { STATIONS } from "/assets/radio.js";
 
 register({ en, it });
 applyStatic();
@@ -569,6 +570,11 @@ function failWith(key) {
 }
 
 function setKind(btn, kind) {
+  if (kind === "station" && !btn.station) {
+    // A new station tile starts as Virgin Radio, with a fitting look.
+    btn.station = "virgin";
+    if (!btn.label || btn.label === t("edit.grid.newButton")) Object.assign(btn, { label: "Virgin Radio", icon: "🎸", color: "red" });
+  }
   if (kind === "radio") {
     // One radio per pad: a single <audio> element on the tablet and one player on the Mac.
     if (S.cfg.pages.some((pg) => pg.buttons.some((x) => x !== btn && x.kind === "radio"))) return failWith("edit.radio.one");
@@ -618,6 +624,7 @@ function renderInspector() {
   }
   const isFader = btn.kind === "fader";
   const isRadio = btn.kind === "radio";
+  const isStation = btn.kind === "station";
   const preview = () => renderGrid();
   const [mainBox, holdBox, ledBox, getBox, setBox] = [h("div"), h("div"), h("div"), h("div"), h("div")];
   const testBtn = h("button", { class: "btn primary", type: "button", disabled: !btn.steps.length, onclick: () => runTest(btn.steps, mainBox, testBtn, btn.confirm) }, t("edit.insp.test"));
@@ -637,6 +644,13 @@ function renderInspector() {
       ...[2, 3, 4].filter((n) => n <= page().cols).map((n) => h("option", { value: String(n), selected: btn.w === n }, String(n))))),
     common,
   );
+  const stationSec = () => h("div", { class: "sec" },
+    h("h3", {}, t("edit.insp.station")),
+    h("p", { class: "hint" }, t("edit.station.hint")),
+    field(t("edit.insp.station"), h("select", { "aria-label": t("edit.insp.station"), onchange: (e) => { btn.station = e.target.value; touch(); } },
+      ...STATIONS.map((s) => h("option", { value: s.id, selected: btn.station === s.id }, s.name)))),
+    common,
+  );
   insp.replaceChildren(
     ...(isRadio ? [] : [h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.appearance")),
@@ -653,16 +667,17 @@ function renderInspector() {
     h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.behavior")),
       field(t("edit.insp.kind"), h("select", { "aria-label": t("edit.insp.kind"), onchange: (e) => setKind(btn, e.target.value) },
-        h("option", { value: "button", selected: !isFader && !isRadio }, t("edit.insp.kind.button")),
+        h("option", { value: "button", selected: !isFader && !isRadio && !isStation }, t("edit.insp.kind.button")),
         h("option", { value: "fader", selected: isFader }, t("edit.insp.kind.fader")),
-        h("option", { value: "radio", selected: isRadio }, t("edit.insp.kind.radio")))),
-      ...(isFader || isRadio ? [] : [
+        h("option", { value: "radio", selected: isRadio }, t("edit.insp.kind.radio")),
+        h("option", { value: "station", selected: isStation }, t("edit.insp.kind.station")))),
+      ...(isFader || isRadio || isStation ? [] : [
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.confirm, onchange: (e) => { btn.confirm = e.target.checked; touch(); } }), `${t("edit.insp.confirm")} `, h("small", {}, t("edit.insp.confirmHint"))),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.showOutput, onchange: (e) => { btn.showOutput = e.target.checked; touch(); } }), t("edit.insp.showOutput")),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.toggle, onchange: (e) => { btn.toggle = e.target.checked; touch(); preview(); } }), `${t("edit.insp.toggle")} `, h("small", {}, t("edit.insp.toggleHint"))),
       ]),
     ),
-    ...(isRadio ? [radioSec()] : isFader
+    ...(isRadio ? [radioSec()] : isStation ? [stationSec()] : isFader
       ? [
           h("div", { class: "sec" },
             h("h3", {}, t("edit.insp.fader")),

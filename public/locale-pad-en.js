@@ -14,6 +14,7 @@ export default {
   "pad.radio.out.tablet": "Playing on this tablet (tap to play on the Mac)",
   "pad.radio.tuning": "TUNING…",
   "pad.radio.idle": "TAP PLAY",
+  "pad.radio.live": "LIVE",
   "pad.radio.error": "NO SIGNAL",
   "pad.reload": "Reload",
   "pad.kiosk": "Open the dashboard kiosk",
