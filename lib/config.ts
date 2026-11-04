@@ -7,6 +7,17 @@ import { MOUSE_BUTTONS, type MouseButton } from "./mouse.ts";
 import { normalizeArgs, type Args } from "./macos.ts";
 import { isStation } from "./stations.ts";
 
+// The pad grid is measured in units: a classic tile is SUB×SUB units, so a key can be resized in
+// quarter-tile steps (1×1 unit = a quarter of a classic tile).
+export const SUB = 2;
+// Smallest size per kind, in units. A fader needs room for its track, the radio for its LCD.
+export const MIN_SIZE: Record<"button" | "fader" | "radio" | "station", [number, number]> = {
+  button: [1, 1],
+  station: [1, 1],
+  fader: [2, 1],
+  radio: [4, 2],
+};
+
 export const COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "violet", "pink"] as const;
 export type Color = (typeof COLORS)[number];
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
@@ -44,7 +55,8 @@ export interface Button {
   led: string; // shell command: exit 0 = on (kind "button" only)
   toggle: boolean; // latching: the pad remembers on/off, flipped by each successful tap (ignored when `led` is set)
   fader: Fader; // kind "fader" only
-  w: number; // columns spanned: 1, except kind "radio" (2–4)
+  w: number; // size in grid units (see SUB)
+  h: number;
   station: string; // kind "station": the station this tile plays/stops (see lib/stations.ts)
 }
 export interface Page {
@@ -186,8 +198,36 @@ export function validateSteps(raw: unknown, where = "steps"): Step[] {
   return steps;
 }
 
+// Version 1 stored tile coordinates (a key = 1 cell, a radio = w cells). Version 2 stores grid units.
+// Anything that is not a recognisable version-1 object comes back as the same reference, so
+// callers can tell whether a migration happened.
+export function migrateConfig(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const root = raw as Record<string, unknown>;
+  if (root.version === 2 || !Array.isArray(root.pages)) return raw;
+  const times = (v: unknown) => (typeof v === "number" ? v * SUB : v);
+  return {
+    ...root,
+    version: 2,
+    pages: root.pages.map((p: unknown) => {
+      if (!p || typeof p !== "object" || Array.isArray(p)) return p;
+      const page = p as Record<string, unknown>;
+      if (!Array.isArray(page.buttons)) return page;
+      return {
+        ...page,
+        buttons: page.buttons.map((b: unknown) => {
+          if (!b || typeof b !== "object" || Array.isArray(b)) return b;
+          const x = b as Record<string, unknown>;
+          const cells = typeof x.w === "number" && x.w > 1 ? x.w : 1;
+          return { ...x, col: times(x.col), row: times(x.row), w: cells * SUB, h: SUB };
+        }),
+      };
+    }),
+  };
+}
+
 export function validateConfig(raw: unknown): PadConfig {
-  const root = obj(raw, "config");
+  const root = obj(migrateConfig(raw), "config");
   const pageIds: Record<string, true> = {};
   const buttonIds: Record<string, true> = {};
   let radioSeen = false;
@@ -199,15 +239,17 @@ export function validateConfig(raw: unknown): PadConfig {
     pageIds[pid] = true;
     const cols = int(page.cols, `${w}.cols`, 1, LIMITS.cols);
     const rows = int(page.rows, `${w}.rows`, 1, LIMITS.rows);
+    const ucols = cols * SUB;
+    const urows = rows * SUB;
     const cells: Record<string, true> = {};
-    const buttons: Button[] = arr(page.buttons, `${w}.buttons`, cols * rows).map((b, bi) => {
+    const buttons: Button[] = arr(page.buttons, `${w}.buttons`, ucols * urows).map((b, bi) => {
       const bw = `${w}.buttons[${bi}]`;
       const btn = obj(b, bw);
       const bid = id(btn.id, `${bw}.id`);
       if (buttonIds[bid]) throw new ConfigError(`${bw}.id: duplicate`);
       buttonIds[bid] = true;
-      const col = int(btn.col, `${bw}.col`, 0, cols - 1);
-      const row = int(btn.row, `${bw}.row`, 0, rows - 1);
+      const col = int(btn.col, `${bw}.col`, 0, ucols - 1);
+      const row = int(btn.row, `${bw}.row`, 0, urows - 1);
       const kind = btn.kind === undefined ? "button" : btn.kind;
       if (kind !== "button" && kind !== "fader" && kind !== "radio" && kind !== "station") {
         throw new ConfigError(`${bw}.kind: button/fader/radio/station`);
@@ -216,11 +258,17 @@ export function validateConfig(raw: unknown): PadConfig {
       const isRadio = kind === "radio";
       const isStationTile = kind === "station";
       const inert = isFader || isRadio || isStationTile; // no tap actions of their own
-      const span = isRadio ? (btn.w === undefined ? 3 : int(btn.w, `${bw}.w`, 2, 4)) : 1;
-      if (col + span > cols) throw new ConfigError(`${bw}: does not fit in ${cols} columns`);
-      for (let c = col; c < col + span; c++) {
-        if (cells[`${c},${row}`]) throw new ConfigError(`${bw}: cell (${c},${row}) already taken`);
-        cells[`${c},${row}`] = true;
+      const [minW, minH] = MIN_SIZE[kind];
+      const width = btn.w === undefined ? (isRadio ? 3 * SUB : SUB) : int(btn.w, `${bw}.w`, minW, ucols);
+      const height = btn.h === undefined ? SUB : int(btn.h, `${bw}.h`, minH, urows);
+      if (col + width > ucols || row + height > urows) {
+        throw new ConfigError(`${bw}: does not fit in the ${ucols}×${urows} grid`);
+      }
+      for (let r = row; r < row + height; r++) {
+        for (let c = col; c < col + width; c++) {
+          if (cells[`${c},${r}`]) throw new ConfigError(`${bw}: unit (${c},${r}) already taken`);
+          cells[`${c},${r}`] = true;
+        }
       }
       if (isRadio) {
         if (radioSeen) throw new ConfigError(`${bw}: only one radio is allowed`);
@@ -248,14 +296,15 @@ export function validateConfig(raw: unknown): PadConfig {
         led: inert ? "" : str(btn.led, `${bw}.led`, { max: 2000 }),
         toggle: !inert && btn.toggle === true,
         fader: isFader ? fader : { get: "", set: "" },
-        w: span,
+        w: width,
+        h: height,
         station,
       };
     });
     return { id: pid, name: str(page.name, `${w}.name`, { required: true, max: 30 }), cols, rows, buttons };
   });
   if (pages.length === 0) throw new ConfigError("pages: at least one page is required");
-  return { version: 1, pages };
+  return { version: 2, pages };
 }
 
 // Value of a fader: integer 0–100.
@@ -276,6 +325,7 @@ export interface PublicButton {
   hasHold: boolean;
   hasLed: boolean;
   w: number;
+  h: number;
   station: string;
 }
 export interface PublicPage extends Omit<Page, "buttons"> {
@@ -300,24 +350,26 @@ export function publicView(cfg: PadConfig): { pages: PublicPage[] } {
         hasHold: x.hold.length > 0,
         hasLed: x.led.trim() !== "" || x.toggle,
         w: x.w,
+        h: x.h,
         station: x.station,
       })),
     })),
   };
 }
 
+// Seed helper: coordinates are in whole tiles; a tile is SUB×SUB grid units.
 const b = (
   id: string, col: number, row: number, label: string, icon: string, color: Color, steps: Step[],
   extra: Partial<Pick<Button, "confirm" | "showOutput" | "hold" | "led" | "toggle">> = {},
 ): Button => ({
-  id, col, row, label, icon, color, kind: "button", confirm: false, showOutput: false, steps,
-  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: 1, station: "", ...extra,
+  id, col: col * SUB, row: row * SUB, label, icon, color, kind: "button", confirm: false, showOutput: false, steps,
+  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: SUB, h: SUB, station: "", ...extra,
 });
 
 // Example pad on first start: harmless actions, all editable.
 export function seedConfig(): PadConfig {
   return {
-    version: 1,
+    version: 2,
     pages: [
       {
         id: "main",
@@ -345,8 +397,8 @@ export function seedConfig(): PadConfig {
             { type: "applescript", script: "set volume output volume ((output volume of (get volume settings)) - 10)" },
           ]),
           {
-            id: "volume", col: 2, row: 1, label: "Volume", icon: "🎚️", color: "teal", kind: "fader",
-            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: 1, station: "",
+            id: "volume", col: 2 * SUB, row: 1 * SUB, label: "Volume", icon: "🎚️", color: "teal", kind: "fader",
+            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: SUB, h: SUB, station: "",
             fader: {
               get: "osascript -e 'output volume of (get volume settings)'",
               set: 'osascript -e "set volume output volume $PAD_VALUE"',
@@ -366,7 +418,13 @@ export function createStore(path: string) {
   if (existsSync(path)) {
     // Unreadable/invalid file: stop, never overwrite the user's work.
     try {
-      cfg = validateConfig(JSON.parse(readFileSync(path, "utf8")));
+      const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+      cfg = validateConfig(parsed);
+      if (migrateConfig(parsed) !== parsed) {
+        // First start on the unit grid: keep the old file next to the new one.
+        copyFileSync(path, `${path}.v1.bak`);
+        persist(cfg);
+      }
     } catch (e) {
       throw new Error(`${path} invalid: ${(e as Error).message}`);
     }

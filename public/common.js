@@ -29,9 +29,14 @@ export async function api(path, opts = {}) {
   return data;
 }
 
+// The grid is measured in units; a classic tile is SUB×SUB units, so keys resize in quarter-tile
+// steps. SUB and MIN_SIZE mirror lib/config.ts (the server validates them).
+export const SUB = 2;
+export const MIN_SIZE = { button: [1, 1], station: [1, 1], fader: [2, 1], radio: [4, 2] };
+
 export function applyGrid(gridEl, page) {
-  gridEl.style.gridTemplateColumns = `repeat(${page.cols}, minmax(0, 1fr))`;
-  gridEl.style.gridTemplateRows = `repeat(${page.rows}, minmax(0, 1fr))`;
+  gridEl.style.gridTemplateColumns = `repeat(${page.cols * SUB}, minmax(0, 1fr))`;
+  gridEl.style.gridTemplateRows = `repeat(${page.rows * SUB}, minmax(0, 1fr))`;
 }
 
 // A pad button: rendered identically on the tablet and in the editor preview.
@@ -72,8 +77,8 @@ export function tileEl(btn) {
   );
   el.classList.toggle("only-icon", !!btn.icon && !btn.label && !isFader);
   el.classList.toggle("only-label", !btn.icon);
-  el.style.gridColumn = btn.w > 1 ? `${btn.col + 1} / span ${btn.w}` : String(btn.col + 1);
-  el.style.gridRow = String(btn.row + 1);
+  el.style.gridColumn = `${btn.col + 1} / span ${btn.w || SUB}`;
+  el.style.gridRow = `${btn.row + 1} / span ${btn.h || SUB}`;
   if (isFader) el.style.setProperty("--v", "0.5");
   return el;
 }

@@ -1,4 +1,4 @@
-import { api, applyGrid, COLORS, h, tileEl } from "/assets/common.js";
+import { api, applyGrid, COLORS, h, MIN_SIZE, SUB, tileEl } from "/assets/common.js";
 import { applyStatic, lang, LANGS, register, setLang, t } from "/assets/i18n.js";
 import en from "/assets/locale-edit-en.js";
 import it from "/assets/locale-edit-it.js";
@@ -132,14 +132,29 @@ function stepper(label, value, min, max, onChange) {
   );
 }
 
-// Columns a key covers: 1, except a radio (2–4).
-const spanOf = (b) => (b.w > 1 ? b.w : 1);
-// The key covering a cell (its own or an extra one of a wide key), ignoring `except`.
-const buttonAt = (p, col, row, except) => p.buttons.find((x) => x !== except && x.row === row && col >= x.col && col < x.col + spanOf(x));
+// Key size in grid units (a classic tile is SUB×SUB units).
+const wOf = (b) => b.w || SUB;
+const hOf = (b) => b.h || SUB;
+const unitsCols = (p) => p.cols * SUB;
+const unitsRows = (p) => p.rows * SUB;
+// The key covering a unit, ignoring `except`.
+const buttonAt = (p, col, row, except) =>
+  p.buttons.find((x) => x !== except && col >= x.col && col < x.col + wOf(x) && row >= x.row && row < x.row + hOf(x));
+// Does a w×h rectangle at (col,row) lie inside the grid, over free units (ignoring `except`)?
+function fits(p, col, row, w, h, except) {
+  if (col < 0 || row < 0 || col + w > unitsCols(p) || row + h > unitsRows(p)) return false;
+  for (let r = row; r < row + h; r++) for (let c = col; c < col + w; c++) if (buttonAt(p, c, r, except)) return false;
+  return true;
+}
+// Where a w×h key can sit while still covering (col,row): the spot itself, else shifted left/up.
+function placeNear(p, col, row, w, h, except) {
+  for (let dr = 0; dr < h; dr++) for (let dc = 0; dc < w; dc++) if (fits(p, col - dc, row - dr, w, h, except)) return { col: col - dc, row: row - dr };
+  return null;
+}
 
 function resize(dim, value) {
   const p = page();
-  if (p.buttons.some((b) => (dim === "cols" ? b.col + spanOf(b) > value : b.row >= value))) {
+  if (p.buttons.some((b) => (dim === "cols" ? b.col + wOf(b) > value * SUB : b.row + hOf(b) > value * SUB))) {
     S.err = t(dim === "cols" ? "edit.page.shrinkCols" : "edit.page.shrinkRows");
     setStatus();
     return;
@@ -192,8 +207,11 @@ function select(id) {
 }
 
 function addButton(col, row) {
-  const b = { id: newId(), col, row, label: t("edit.grid.newButton"), icon: "⭐", color: "slate", kind: "button", confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: 1 };
-  page().buttons.push(b);
+  const p = page();
+  // As big as fits, up to a classic tile; the unit itself is always free, so 1×1 is the floor.
+  const [w, h] = [[2, 2], [2, 1], [1, 2], [1, 1]].find(([ww, hh]) => fits(p, col, row, ww, hh));
+  const b = { id: newId(), col, row, label: t("edit.grid.newButton"), icon: "⭐", color: "slate", kind: "button", confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w, h, station: "" };
+  p.buttons.push(b);
   touch();
   select(b.id);
 }
@@ -202,41 +220,68 @@ function moveTo(id, col, row) {
   const p = page();
   const b = p.buttons.find((x) => x.id === id);
   if (!b) return;
-  const span = spanOf(b);
-  const c = Math.min(col, p.cols - span); // a wide key snaps back inside the grid
-  if (b.col === c && b.row === row) return;
-  const covered = [];
-  for (let i = c; i < c + span; i++) {
-    const o = buttonAt(p, i, row, b);
-    if (o && !covered.includes(o)) covered.push(o);
-  }
-  if (covered.length === 0) {
-    b.col = c;
-    b.row = row;
-  } else if (span === 1 && covered.length === 1 && spanOf(covered[0]) === 1) {
-    const other = covered[0]; // two plain keys swap places
-    [other.col, other.row] = [b.col, b.row];
-    [b.col, b.row] = [c, row];
+  const [w, h] = [wOf(b), hOf(b)];
+  const over = buttonAt(p, col, row, b);
+  if (over && wOf(over) === w && hOf(over) === h) {
+    [over.col, over.row, b.col, b.row] = [b.col, b.row, over.col, over.row]; // same size: swap places
   } else {
-    S.err = t("edit.move.blocked");
-    return setStatus();
+    const c = Math.min(col, unitsCols(p) - w); // a big key snaps back inside the grid
+    const r = Math.min(row, unitsRows(p) - h);
+    if (b.col === c && b.row === r) return;
+    if (!fits(p, c, r, w, h, b)) {
+      S.err = t("edit.move.blocked");
+      return setStatus();
+    }
+    b.col = c;
+    b.row = r;
   }
   S.err = "";
   touch();
   renderGrid();
 }
 
+// Drag the corner handle of the selected key to resize it in unit steps.
+function startResize(e, b, slotEl) {
+  e.preventDefault();
+  e.stopPropagation();
+  const p = page();
+  const box = slotEl.getBoundingClientRect();
+  const grid = gridEl.getBoundingClientRect();
+  const stepX = grid.width / unitsCols(p);
+  const stepY = grid.height / unitsRows(p);
+  const [minW, minH] = MIN_SIZE[b.kind] ?? [1, 1];
+  const move = (ev) => {
+    let w = Math.min(Math.max(minW, Math.round((ev.clientX - box.left) / stepX)), unitsCols(p) - b.col);
+    let h = Math.min(Math.max(minH, Math.round((ev.clientY - box.top) / stepY)), unitsRows(p) - b.row);
+    while (w > minW && !fits(p, b.col, b.row, w, hOf(b), b)) w--; // width first, at the current height
+    while (h > minH && !fits(p, b.col, b.row, w, h, b)) h--;
+    if (fits(p, b.col, b.row, w, h, b) && (w !== wOf(b) || h !== hOf(b))) {
+      b.w = w;
+      b.h = h;
+      renderGrid();
+    }
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    touch();
+    renderInspector();
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+
 function renderGrid() {
   const p = page();
   applyGrid(gridEl, p);
   const slots = [];
-  for (let row = 0; row < p.rows; row++) {
-    for (let col = 0; col < p.cols; col++) {
+  for (let row = 0; row < unitsRows(p); row++) {
+    for (let col = 0; col < unitsCols(p); col++) {
       const b = buttonAt(p, col, row);
-      if (b && b.col !== col) continue; // covered by a wide key to its left
+      if (b && (b.col !== col || b.row !== row)) continue; // covered by a bigger key
       const slot = h("div", { class: "slot" + (b && b.id === S.sel ? " sel" : "") });
-      slot.style.gridColumn = b && spanOf(b) > 1 ? `${col + 1} / span ${spanOf(b)}` : String(col + 1);
-      slot.style.gridRow = String(row + 1);
+      slot.style.gridColumn = b ? `${col + 1} / span ${wOf(b)}` : String(col + 1);
+      slot.style.gridRow = b ? `${row + 1} / span ${hOf(b)}` : String(row + 1);
       if (b) {
         const tile = tileEl(b);
         tile.draggable = true;
@@ -246,6 +291,7 @@ function renderGrid() {
         });
         tile.addEventListener("click", () => select(b.id));
         slot.append(tile);
+        if (b.id === S.sel) slot.append(h("span", { class: "rz", title: t("edit.size.drag"), onpointerdown: (e) => startResize(e, b, slot) }));
       } else {
         slot.append(h("button", { class: "add", type: "button", "aria-label": t("edit.grid.add"), onclick: () => addButton(col, row) }, "+"));
       }
@@ -551,16 +597,15 @@ const fmtSet = (r) => (r.ok ? { ok: true, text: t("edit.fader.setOk") } : { ok: 
 const VOL_GET = "osascript -e 'output volume of (get volume settings)'";
 const VOL_SET = 'osascript -e "set volume output volume $PAD_VALUE"';
 
-// Free columns for a wide key on its row (ignoring the key itself): { col, w } or null.
-function fitWide(p, btn, widths) {
-  for (const w of widths) {
-    for (let col = Math.min(btn.col, p.cols - w); col >= Math.max(0, btn.col - (w - 1)); col--) {
-      let free = true;
-      for (let i = col; i < col + w; i++) if (buttonAt(p, i, btn.row, btn)) free = false;
-      if (free) return { col, w };
-    }
-  }
-  return null;
+// Changes a key's size, keeping its top-left unit; refused when the units are taken or off the grid.
+function setSize(btn, w, h) {
+  if (!fits(page(), btn.col, btn.row, w, h, btn)) return failWith("edit.size.noRoom");
+  btn.w = w;
+  btn.h = h;
+  S.err = "";
+  touch();
+  renderGrid();
+  renderInspector();
 }
 
 function failWith(key) {
@@ -575,16 +620,15 @@ function setKind(btn, kind) {
     btn.station = "virgin";
     if (!btn.label || btn.label === t("edit.grid.newButton")) Object.assign(btn, { label: "Virgin Radio", icon: "🎸", color: "red" });
   }
-  if (kind === "radio") {
-    // One radio per pad: a single <audio> element on the tablet and one player on the Mac.
-    if (S.cfg.pages.some((pg) => pg.buttons.some((x) => x !== btn && x.kind === "radio"))) return failWith("edit.radio.one");
-    const fit = fitWide(page(), btn, [3, 2]);
-    if (!fit) return failWith("edit.radio.noRoom");
-    btn.col = fit.col;
-    btn.w = fit.w;
-  } else {
-    btn.w = 1;
+  if (kind === "radio" && S.cfg.pages.some((pg) => pg.buttons.some((x) => x !== btn && x.kind === "radio"))) {
+    return failWith("edit.radio.one"); // one radio per pad: a single <audio> on the tablet and one player on the Mac
   }
+  // Grow to the kind's minimum (a radio wants a wide LCD), shifting if needed; refuse when there is no room.
+  const [minW, minH] = MIN_SIZE[kind];
+  const wants = kind === "radio" ? [[3 * SUB, SUB], [minW, minH]] : [[Math.max(wOf(btn), minW), Math.max(hOf(btn), minH)]];
+  const want = wants.find(([w, h]) => placeNear(page(), btn.col, btn.row, w, h, btn));
+  if (!want) return failWith("edit.size.noRoom");
+  Object.assign(btn, { ...placeNear(page(), btn.col, btn.row, want[0], want[1], btn), w: want[0], h: want[1] });
   btn.kind = kind;
   S.err = "";
   // A new fader starts out with the Mac's volume: it is the most common use case.
@@ -594,16 +638,7 @@ function setKind(btn, kind) {
   renderInspector();
 }
 
-function setWidth(btn, w) {
-  const fit = fitWide(page(), btn, [w]);
-  if (!fit) return failWith("edit.radio.noRoom");
-  btn.col = fit.col;
-  btn.w = w;
-  S.err = "";
-  touch();
-  renderGrid();
-  renderInspector();
-}
+
 
 const stepsSection = (title, list, hint) => [
   h("h3", {}, title),
@@ -637,11 +672,16 @@ function renderInspector() {
     h("button", { class: "btn danger", type: "button", onclick: () => remove(btn) }, t("edit.insp.delete")),
   );
 
+  const [minW, minH] = MIN_SIZE[btn.kind] ?? [1, 1];
+  const sizeSec = () => h("div", { class: "sec" },
+    h("h3", {}, t("edit.insp.size")),
+    h("p", { class: "hint" }, t("edit.size.hint")),
+    h("div", { class: "row" },
+      stepper(t("edit.size.w"), wOf(btn), minW, unitsCols(page()), (v) => setSize(btn, v, hOf(btn))),
+      stepper(t("edit.size.h"), hOf(btn), minH, unitsRows(page()), (v) => setSize(btn, wOf(btn), v))));
   const radioSec = () => h("div", { class: "sec" },
     h("h3", {}, t("edit.insp.radio")),
     h("p", { class: "hint" }, t("edit.radio.hint")),
-    field(t("edit.radio.width"), h("select", { "aria-label": t("edit.radio.width"), onchange: (e) => setWidth(btn, Number(e.target.value)) },
-      ...[2, 3, 4].filter((n) => n <= page().cols).map((n) => h("option", { value: String(n), selected: btn.w === n }, String(n))))),
     common,
   );
   const stationSec = () => h("div", { class: "sec" },
@@ -664,6 +704,7 @@ function renderInspector() {
         h("div", { class: "swatches" }, ...COLORS.map((c) =>
           h("button", { class: "swatch", type: "button", dataset: { color: c }, title: c, "aria-pressed": String(btn.color === c), onclick: () => { btn.color = c; touch(); preview(); renderInspector(); } })))),
     )]),
+    sizeSec(),
     h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.behavior")),
       field(t("edit.insp.kind"), h("select", { "aria-label": t("edit.insp.kind"), onchange: (e) => setKind(btn, e.target.value) },
@@ -717,13 +758,16 @@ function duplicate(btn) {
     S.err = t("edit.radio.one");
     return setStatus();
   }
-  const free = [];
-  for (let row = 0; row < p.rows; row++) for (let col = 0; col < p.cols; col++) if (!buttonAt(p, col, row)) free.push({ col, row });
-  if (!free.length) {
+  const [w, h] = [wOf(btn), hOf(btn)];
+  let spot = null;
+  for (let row = 0; row + h <= unitsRows(p) && !spot; row++) {
+    for (let col = 0; col + w <= unitsCols(p) && !spot; col++) if (fits(p, col, row, w, h)) spot = { col, row };
+  }
+  if (!spot) {
     S.err = t("edit.dup.noFree");
     return setStatus();
   }
-  const copy = { ...structuredClone(btn), id: newId(), ...free[0] };
+  const copy = { ...structuredClone(btn), id: newId(), ...spot };
   p.buttons.push(copy);
   S.err = "";
   touch();

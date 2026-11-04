@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { ConfigError, seedConfig, validateStep, validateSteps } from "../lib/config.ts";
+import { mkdtempSync } from "node:fs";
+import { ConfigError, publicView, seedConfig, validateConfig, validateStep, validateSteps } from "../lib/config.ts";
 import { ACTIONS, macScript, normalizeArgs } from "../lib/macos.ts";
 import { runSteps } from "../lib/run.ts";
+import { createState } from "../lib/state.ts";
 
 const shell = (cmd: string, extra: object = {}) => ({ type: "shell" as const, cmd, cwd: "", timeout: 5, ...extra });
 
@@ -81,7 +83,7 @@ describe("step chaining", () => {
 
 describe("latching buttons", () => {
   test("toggle is stored only on buttons, defaults off, and counts as an LED for the tablet", async () => {
-    const { seedConfig, validateConfig, publicView } = await import("../lib/config.ts");
+
     const cfg = structuredClone(seedConfig());
     cfg.pages[0].buttons[0].toggle = true;
     const ok = validateConfig(cfg);
@@ -92,9 +94,7 @@ describe("latching buttons", () => {
     expect(validateConfig(cfg).pages[0].buttons.find((b) => b.kind === "fader")!.toggle).toBe(false);
   });
   test("remembered state flips, survives a restart, and is shown as the LED", async () => {
-    const { createState } = await import("../lib/state.ts");
-    const { seedConfig, validateConfig } = await import("../lib/config.ts");
-    const { mkdtempSync } = await import("node:fs");
+
     const path = `${mkdtempSync("/tmp/tog-")}/toggles.json`;
     const cfg = structuredClone(seedConfig());
     cfg.pages[0].buttons[0].toggle = true;
@@ -114,47 +114,44 @@ describe("latching buttons", () => {
 });
 
 describe("radio widget", () => {
+  // Units: the default pad is 4×3 tiles = 8×6 units; a classic tile is 2×2 units.
   const radioCfg = (over: object, extra: object[] = []) => {
     const c = structuredClone(seedConfig());
     c.pages[0].buttons = [
-      { ...c.pages[0].buttons[0], id: "r", col: 0, row: 2, kind: "radio", w: 3, ...over },
+      { ...c.pages[0].buttons[0], id: "r", col: 0, row: 4, kind: "radio", w: 6, h: 2, ...over },
       ...extra,
     ] as typeof c.pages[0].buttons;
     return c;
   };
-  test("a radio covers w cells: it must fit the grid and may not overlap a key", async () => {
-    const { validateConfig, ConfigError } = await import("../lib/config.ts");
-    expect(validateConfig(radioCfg({})).pages[0].buttons[0]).toMatchObject({ kind: "radio", w: 3, steps: [], hold: [], led: "", toggle: false });
-    expect(() => validateConfig(radioCfg({ col: 2, w: 3 }))).toThrow(ConfigError); // 2 + 3 > 4 columns
-    const base = seedConfig().pages[0].buttons[0];
-    expect(() => validateConfig(radioCfg({}, [{ ...base, id: "x", col: 2, row: 2 }]))).toThrow(ConfigError); // under the radio
-    expect(validateConfig(radioCfg({}, [{ ...base, id: "x", col: 3, row: 2 }])).pages[0].buttons).toHaveLength(2);
-    for (const bad of [1, 5, 2.5, "3"]) expect(() => validateConfig(radioCfg({ w: bad }))).toThrow(ConfigError);
+  const base = () => seedConfig().pages[0].buttons[0];
+  test("a radio covers w×h units: it must fit the grid and may not overlap a key", async () => {
+
+    expect(validateConfig(radioCfg({})).pages[0].buttons[0]).toMatchObject({ kind: "radio", w: 6, h: 2, steps: [], hold: [], led: "", toggle: false });
+    expect(() => validateConfig(radioCfg({ col: 4, w: 6 }))).toThrow(ConfigError); // 4 + 6 > 8 units wide
+    expect(() => validateConfig(radioCfg({ row: 5, h: 2 }))).toThrow(ConfigError); // 5 + 2 > 6 units high
+    expect(() => validateConfig(radioCfg({}, [{ ...base(), id: "x", col: 4, row: 5, w: 1, h: 1 }]))).toThrow(ConfigError); // under the radio
+    expect(validateConfig(radioCfg({}, [{ ...base(), id: "x", col: 6, row: 4, w: 2, h: 2 }])).pages[0].buttons).toHaveLength(2);
+    for (const bad of [1, 3, 9, 2.5, "6"]) expect(() => validateConfig(radioCfg({ w: bad }))).toThrow(ConfigError); // min 4, max the grid width
+    expect(() => validateConfig(radioCfg({ h: 1 }))).toThrow(ConfigError); // min 2 high
   });
-  test("only one radio per pad, and the tablet is told its width", async () => {
-    const { validateConfig, ConfigError, publicView } = await import("../lib/config.ts");
-    const base = seedConfig().pages[0].buttons[0];
-    expect(() => validateConfig(radioCfg({}, [{ ...base, id: "r2", col: 0, row: 1, kind: "radio", w: 2 }]))).toThrow(ConfigError);
-    expect(publicView(validateConfig(radioCfg({}))).pages[0].buttons[0]).toMatchObject({ kind: "radio", w: 3 });
-  });
-  test("plain keys and faders always span one column, whatever the file says", async () => {
-    const { validateConfig } = await import("../lib/config.ts");
-    const c = structuredClone(seedConfig());
-    (c.pages[0].buttons[0] as { w: number }).w = 4;
-    expect(validateConfig(c).pages[0].buttons[0].w).toBe(1);
+  test("only one radio per pad, and the tablet is told its size", async () => {
+
+    expect(() => validateConfig(radioCfg({}, [{ ...base(), id: "r2", col: 0, row: 2, kind: "radio", w: 4, h: 2 }]))).toThrow(ConfigError);
+    expect(publicView(validateConfig(radioCfg({}))).pages[0].buttons[0]).toMatchObject({ kind: "radio", w: 6, h: 2 });
   });
 });
 
 describe("station tile", () => {
-  test("kind station needs a known station, spans one column and has no actions of its own", async () => {
-    const { validateConfig, ConfigError, publicView } = await import("../lib/config.ts");
+  test("kind station needs a known station and has no actions of its own", async () => {
+
     const mk = (over: object) => {
       const c = structuredClone(seedConfig());
       Object.assign(c.pages[0].buttons[0], { kind: "station", steps: [{ type: "shell", cmd: "true", cwd: "", timeout: 5 }], ...over });
       return c;
     };
-    const ok = validateConfig(mk({ station: "virgin", w: 3 })).pages[0].buttons[0];
-    expect(ok).toMatchObject({ kind: "station", station: "virgin", w: 1, steps: [], hold: [], led: "", toggle: false });
+    const ok = validateConfig(mk({ station: "virgin" })).pages[0].buttons[0];
+    expect(ok).toMatchObject({ kind: "station", station: "virgin", w: 2, h: 2, steps: [], hold: [], led: "", toggle: false });
+    expect(validateConfig(mk({ station: "virgin", w: 1, h: 1 })).pages[0].buttons[0]).toMatchObject({ w: 1, h: 1 }); // a quarter tile
     expect(publicView(validateConfig(mk({ station: "virgin" }))).pages[0].buttons[0]).toMatchObject({ kind: "station", station: "virgin" });
     for (const bad of [{}, { station: "nope" }, { station: "" }, { station: 5 }]) expect(() => validateConfig(mk(bad))).toThrow(ConfigError);
     // a plain key never carries a station

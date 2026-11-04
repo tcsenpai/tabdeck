@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { ConfigError } from "../lib/config.ts";
 import { createRadio, radioCommand, type Radio, type RadioOptions } from "../lib/radio.ts";
+import { isStation, stationUrl } from "../lib/stations.ts";
 
 // These tests run real child processes (a fake player that sleeps), so they wait for a *condition*
 // (polling `until`) instead of a guessed duration. Fake timers cannot observe an OS process.
@@ -94,7 +95,7 @@ describe("Mac player", () => {
 
 describe("station tiles", () => {
   test("the whitelist includes Virgin Radio and rejects anything else", async () => {
-    const { isStation, stationUrl } = await import("../lib/stations.ts");
+
     expect(isStation("virgin")).toBe(true);
     expect(stationUrl("virgin")).toBe("https://icecast.unitedradio.it/Virgin.aac");
     expect(stationUrl("darksynth")).toBe("https://stream.nightride.fm/darksynth.mp3");
