@@ -15,4 +15,6 @@ export default {
   "pad.radio.tuning": "SINTONIA…",
   "pad.radio.idle": "TOCCA PLAY",
   "pad.radio.error": "NESSUN SEGNALE",
+  "pad.reload": "Ricarica",
+  "pad.kiosk": "Apri il kiosk della dashboard",
 };

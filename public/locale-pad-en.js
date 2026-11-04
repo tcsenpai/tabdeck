@@ -15,4 +15,6 @@ export default {
   "pad.radio.tuning": "TUNING…",
   "pad.radio.idle": "TAP PLAY",
   "pad.radio.error": "NO SIGNAL",
+  "pad.reload": "Reload",
+  "pad.kiosk": "Open the dashboard kiosk",
 };

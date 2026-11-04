@@ -26,7 +26,14 @@ bun start          # oppure: bun run dev (riavvia a ogni modifica del server)
 Sul tablet apri l'indirizzo mostrato in alto a destra nell'editor (clic = copia).
 A tutto schermo: pulsante ⛶ in basso a destra.
 
-Variabili: `PORT` (8430), `HOST` (0.0.0.0), `DATA_DIR` (`./data`).
+Variabili: `PORT` (8430), `HOST` (0.0.0.0), `DATA_DIR` (`./data`), `KIOSK_URL` (dove porta il
+pulsante dashboard del pad; predefinito `http://<stesso host>:8420/kiosk`, `off` lo nasconde,
+si accettano solo URL `http(s)://`), `RADIO_PLAYER` (vedi Radio).
+
+Nella barra in basso del pad: schede delle pagine, puntino di connessione, **↻ ricarica**
+(utile su un tablet kiosk senza barra del browser), **▦ dashboard** (apre il kiosk della
+dashboard in una tab dedicata, riusata alla volta dopo, senza digitare indirizzi sul tablet) e
+**⛶ schermo intero**.
 
 ### Lingua
 

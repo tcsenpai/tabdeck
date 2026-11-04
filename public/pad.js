@@ -308,6 +308,7 @@ async function press(b, el, mode) {
 async function load() {
   const d = await api("/api/pad");
   state.cfg = d;
+  kioskBtn.hidden = d.kiosk === "off";
   state.rev = d.rev;
   render();
   refreshState();
@@ -341,6 +342,15 @@ if (document.documentElement.requestFullscreen) {
 } else {
   fsBtn.hidden = true;
 }
+
+$("reload").addEventListener("click", () => location.reload());
+
+// Opens the dashboard kiosk in its own tab (the same tab is reused next time), so nobody has to type
+// the address on the tablet. Default: the Mac's port 8420; the server can override it with
+// KIOSK_URL, and KIOSK_URL=off hides the button.
+const kioskBtn = $("kiosk");
+const kioskUrl = () => state.cfg?.kiosk || `${location.protocol}//${location.hostname}:8420/kiosk`;
+kioskBtn.addEventListener("click", () => window.open(kioskUrl(), "tabdeck-kiosk"));
 
 // Wake lock only exists in secure contexts (https/localhost): on http://LAN-IP it simply isn't there.
 async function keepAwake() {

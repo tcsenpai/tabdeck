@@ -56,7 +56,9 @@ bun start          # or: bun run dev (restarts on server changes)
 Open the address shown at the top right of the editor on the tablet (click = copy).
 Fullscreen: the ⛶ button at the bottom right.
 
-Environment variables: `PORT` (8430), `HOST` (0.0.0.0), `DATA_DIR` (`./data`).
+Environment variables: `PORT` (8430), `HOST` (0.0.0.0), `DATA_DIR` (`./data`),
+`KIOSK_URL` (where the pad's dashboard button goes; default `http://<same host>:8420/kiosk`,
+`off` hides the button, only `http(s)://` values are accepted), `RADIO_PLAYER` (see Radio).
 
 The first time, macOS asks whether `bun` may accept incoming connections: allow it.
 
@@ -79,6 +81,9 @@ Terminal), because launchd starts the process.
 
 - **Grid and pages:** swipe horizontally or use the tabs; the board rotates like a cube.
   Swipe does not act on faders.
+- **Bottom bar:** page tabs, the connection dot, **↻ reload** (handy on a kiosk tablet with no
+  browser chrome), **▦ dashboard** (opens the dashboard kiosk in its own tab, reused next time,
+  so nobody types an address on the tablet) and **⛶ fullscreen**.
 - **Buttons with step chains:** a button is an ordered list of steps; it stops at the
   first error (unless the step has `continueOnError`).
 - **Confirm** option: the first tap arms the button for 3 s, the second runs it.

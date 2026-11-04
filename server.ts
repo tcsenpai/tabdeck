@@ -19,6 +19,12 @@ const store = createStore(`${DATA_DIR}/pad.json`);
 const state = createState(() => store.config, () => store.rev, `${DATA_DIR}/toggles.json`);
 const radio = createRadio(DATA_DIR);
 const hasRadio = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "radio"));
+// Where the pad's dashboard button goes. "" = the same host on port 8420; "off" hides the button.
+// Only http(s) URLs are accepted: the value ends up in window.open() on the tablet.
+const KIOSK_URL = (() => {
+  const v = (process.env.KIOSK_URL ?? "").trim();
+  return v === "off" || /^https?:\/\//i.test(v) ? v : "";
+})();
 const running: Record<string, true> = {};
 
 const noCache = { "Cache-Control": "no-store" };
@@ -108,7 +114,7 @@ const server = Bun.serve({
         return serveFile(name);
       }
 
-      if (method === "GET" && path === "/api/pad") return json({ rev: store.rev, ...publicView(store.config) });
+      if (method === "GET" && path === "/api/pad") return json({ rev: store.rev, kiosk: KIOSK_URL, ...publicView(store.config) });
       if (method === "GET" && path === "/api/rev") return json({ rev: store.rev });
       if (method === "GET" && path === "/api/state") {
         const s = await state.get();
