@@ -1,5 +1,6 @@
 // Shared by the pad (tablet) and the editor (Mac). Text goes through textContent only: labels are user data.
 import { t } from "/assets/i18n.js";
+import { radioInner } from "/assets/radio.js";
 
 export const COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "violet", "pink"];
 
@@ -37,8 +38,10 @@ export function applyGrid(gridEl, page) {
 // `btn` is either the public view (hasHold/hasLed) or the editor's full config (hold/led).
 export function tileEl(btn) {
   const isFader = btn.kind === "fader";
-  const hasHold = !isFader && (btn.hasHold ?? btn.hold?.length > 0);
-  const hasLed = !isFader && (btn.hasLed ?? (!!btn.led?.trim() || !!btn.toggle));
+  const isRadio = btn.kind === "radio";
+  const bare = isFader || isRadio; // no tap action of their own: no hold dot, no LED
+  const hasHold = !bare && (btn.hasHold ?? btn.hold?.length > 0);
+  const hasLed = !bare && (btn.hasLed ?? (!!btn.led?.trim() || !!btn.toggle));
   const dot = hasHold ? h("span", { class: "hdot", title: t("tile.hold") }) : null;
   const label = btn.label ? h("span", { class: "lb" }, btn.label) : null;
   const icon = btn.icon ? h("span", { class: "ic" }, btn.icon, dot) : null;
@@ -46,17 +49,17 @@ export function tileEl(btn) {
     ? h("span", { class: "track" }, h("span", { class: "fill" }), h("span", { class: "knob" }))
     : null;
   const el = h(
-    isFader ? "div" : "button",
+    bare ? "div" : "button",
     {
-      class: "tile" + (isFader ? " fader" : ""),
-      type: isFader ? undefined : "button",
-      role: isFader ? "slider" : undefined,
+      class: "tile" + (isFader ? " fader" : "") + (isRadio ? " radio" : ""),
+      type: bare ? undefined : "button",
+      role: isFader ? "slider" : isRadio ? "group" : undefined,
       dataset: { color: btn.color, id: btn.id },
       "aria-label": btn.label || btn.icon || t("tile.button"),
     },
     h("span", { class: "box" },
       h("span", { class: "f front" },
-        h("span", { class: "in" }, icon, label, track, isFader ? h("span", { class: "val" }, "–") : null, icon ? null : dot),
+        isRadio ? radioInner(h) : h("span", { class: "in" }, icon, label, track, isFader ? h("span", { class: "val" }, "–") : null, icon ? null : dot),
         hasLed ? h("span", { class: "led" }) : null),
       h("span", { class: "f back" }),
       h("span", { class: "f top" }),
@@ -66,7 +69,7 @@ export function tileEl(btn) {
   );
   el.classList.toggle("only-icon", !!btn.icon && !btn.label && !isFader);
   el.classList.toggle("only-label", !btn.icon);
-  el.style.gridColumn = String(btn.col + 1);
+  el.style.gridColumn = btn.w > 1 ? `${btn.col + 1} / span ${btn.w}` : String(btn.col + 1);
   el.style.gridRow = String(btn.row + 1);
   if (isFader) el.style.setProperty("--v", "0.5");
   return el;

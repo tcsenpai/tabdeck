@@ -1,0 +1,144 @@
+/* Car-stereo widget (kind "radio"). Sizes use the tile's container units (cqh/cqw);
+   only transform/opacity animate, so it stays cheap on a weak tablet. */
+.tile.radio {
+  cursor: default;
+  /* A wide plane magnifies under the default tilt: keep it nearly frontal, with a long lens. */
+  --rest-x: -4deg;
+  --rest-y: -4deg;
+  perspective: 2600px;
+}
+.tile.radio:active { --push: 0px; }
+.tile.radio .in.rd {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6cqh;
+  padding: 9cqh 7cqh;
+}
+
+/* Play / pause knob */
+.rd-play {
+  display: grid;
+  place-items: center;
+  width: min(62cqh, 18cqw);
+  aspect-ratio: 1;
+  padding: 0;
+  color: var(--c);
+  cursor: pointer;
+  touch-action: manipulation;
+  border: 2px solid var(--c);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--c) 42%, #0a0d1a), #05060d 72%);
+  box-shadow: 0 0 18px -2px var(--glow), inset 0 0 14px -6px var(--c);
+}
+.rd-play:active { transform: scale(0.94); }
+.rd-ic {
+  box-sizing: content-box;
+  width: 0;
+  height: 0;
+  margin-left: 0.12em;
+  font-size: 15cqh;
+  border-top: 0.55em solid transparent;
+  border-bottom: 0.55em solid transparent;
+  border-left: 0.9em solid currentColor;
+  filter: drop-shadow(0 0 6px var(--c));
+}
+.tile[data-rd="playing"] .rd-ic,
+.tile[data-rd="loading"] .rd-ic {
+  width: 0.28em;
+  height: 1.1em;
+  margin-left: 0;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0.3em solid currentColor;
+  border-right: 0.3em solid currentColor;
+}
+.tile[data-rd="loading"] .rd-play { animation: rdpulse 0.9s ease-in-out infinite; }
+@keyframes rdpulse { 50% { opacity: 0.55; } }
+
+/* LCD */
+.rd-lcd {
+  display: grid;
+  gap: 4cqh;
+  min-width: 0;
+  padding: 6cqh 7cqh;
+  border: 1px solid color-mix(in srgb, var(--c) 65%, transparent);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #02040a, #070b18);
+  box-shadow: inset 0 0 16px #000, 0 0 12px -6px var(--c);
+}
+.rd-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rd-st {
+  flex: 1;
+  min-width: 0;
+  font: 700 max(11px, 9.5cqh) var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c);
+  text-shadow: 0 0 10px var(--glow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rd-out {
+  flex: none;
+  padding: 5px 9px;
+  font: 700 max(9px, 6.5cqh) var(--mono);
+  letter-spacing: 0.1em;
+  color: #05060d;
+  cursor: pointer;
+  touch-action: manipulation;
+  background: var(--c);
+  border: 0;
+  border-radius: 3px;
+}
+.rd-eq { display: flex; align-items: flex-end; gap: 2px; flex: none; height: 9cqh; }
+.rd-eq i {
+  width: 3px;
+  height: 100%;
+  background: var(--c);
+  transform: scaleY(0.15);
+  transform-origin: bottom;
+}
+.tile[data-rd="playing"] .rd-eq i { animation: rdeq 0.9s ease-in-out infinite; }
+.rd-eq i:nth-child(2) { animation-delay: -0.2s; }
+.rd-eq i:nth-child(3) { animation-delay: -0.45s; }
+.rd-eq i:nth-child(4) { animation-delay: -0.1s; }
+.rd-eq i:nth-child(5) { animation-delay: -0.6s; }
+@keyframes rdeq { 0%, 100% { transform: scaleY(0.2); } 50% { transform: scaleY(1); } }
+
+.rd-now {
+  font: max(11px, 8.5cqh) var(--mono);
+  letter-spacing: 0.04em;
+  color: #d4f3ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tile[data-rd="error"] .rd-now { color: var(--err); }
+
+/* Tuner scale: one tick per station */
+.rd-tune { display: flex; justify-content: space-between; align-items: flex-end; height: 8cqh; }
+.rd-tune i { width: 2px; height: 38%; background: color-mix(in srgb, var(--c) 38%, transparent); }
+.rd-tune i.on { width: 3px; height: 100%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+
+/* Station buttons */
+.rd-nav { display: grid; gap: 5cqh; }
+.rd-nav button {
+  width: max(40px, 25cqh);
+  height: max(38px, 24cqh);
+  padding: 0;
+  font: 700 22cqh/1 var(--mono);
+  color: var(--c);
+  cursor: pointer;
+  touch-action: manipulation;
+  border: 1.5px solid var(--c);
+  border-radius: 6px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 18%, #0a0d1a), #05060d);
+  box-shadow: 0 0 10px -4px var(--glow);
+}
+.rd-nav button:active { transform: scale(0.92); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tile[data-rd] .rd-eq i, .tile[data-rd="loading"] .rd-play { animation: none; }
+}

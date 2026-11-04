@@ -131,11 +131,14 @@ function stepper(label, value, min, max, onChange) {
   );
 }
 
+// Columns a key covers: 1, except a radio (2–4).
+const spanOf = (b) => (b.w > 1 ? b.w : 1);
+// The key covering a cell (its own or an extra one of a wide key), ignoring `except`.
+const buttonAt = (p, col, row, except) => p.buttons.find((x) => x !== except && x.row === row && col >= x.col && col < x.col + spanOf(x));
+
 function resize(dim, value) {
   const p = page();
-  const next = { cols: p.cols, rows: p.rows, [dim]: value };
-  const key = dim === "cols" ? "col" : "row";
-  if (p.buttons.some((b) => b[key] >= next[dim])) {
+  if (p.buttons.some((b) => (dim === "cols" ? b.col + spanOf(b) > value : b.row >= value))) {
     S.err = t(dim === "cols" ? "edit.page.shrinkCols" : "edit.page.shrinkRows");
     setStatus();
     return;
@@ -188,7 +191,7 @@ function select(id) {
 }
 
 function addButton(col, row) {
-  const b = { id: newId(), col, row, label: t("edit.grid.newButton"), icon: "⭐", color: "slate", kind: "button", confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, fader: { get: "", set: "" } };
+  const b = { id: newId(), col, row, label: t("edit.grid.newButton"), icon: "⭐", color: "slate", kind: "button", confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: 1 };
   page().buttons.push(b);
   touch();
   select(b.id);
@@ -197,10 +200,27 @@ function addButton(col, row) {
 function moveTo(id, col, row) {
   const p = page();
   const b = p.buttons.find((x) => x.id === id);
-  if (!b || (b.col === col && b.row === row)) return;
-  const other = p.buttons.find((x) => x.col === col && x.row === row);
-  if (other) [other.col, other.row] = [b.col, b.row];
-  [b.col, b.row] = [col, row];
+  if (!b) return;
+  const span = spanOf(b);
+  const c = Math.min(col, p.cols - span); // a wide key snaps back inside the grid
+  if (b.col === c && b.row === row) return;
+  const covered = [];
+  for (let i = c; i < c + span; i++) {
+    const o = buttonAt(p, i, row, b);
+    if (o && !covered.includes(o)) covered.push(o);
+  }
+  if (covered.length === 0) {
+    b.col = c;
+    b.row = row;
+  } else if (span === 1 && covered.length === 1 && spanOf(covered[0]) === 1) {
+    const other = covered[0]; // two plain keys swap places
+    [other.col, other.row] = [b.col, b.row];
+    [b.col, b.row] = [c, row];
+  } else {
+    S.err = t("edit.move.blocked");
+    return setStatus();
+  }
+  S.err = "";
   touch();
   renderGrid();
 }
@@ -211,9 +231,10 @@ function renderGrid() {
   const slots = [];
   for (let row = 0; row < p.rows; row++) {
     for (let col = 0; col < p.cols; col++) {
-      const b = p.buttons.find((x) => x.col === col && x.row === row);
+      const b = buttonAt(p, col, row);
+      if (b && b.col !== col) continue; // covered by a wide key to its left
       const slot = h("div", { class: "slot" + (b && b.id === S.sel ? " sel" : "") });
-      slot.style.gridColumn = String(col + 1);
+      slot.style.gridColumn = b && spanOf(b) > 1 ? `${col + 1} / span ${spanOf(b)}` : String(col + 1);
       slot.style.gridRow = String(row + 1);
       if (b) {
         const tile = tileEl(b);
@@ -529,10 +550,50 @@ const fmtSet = (r) => (r.ok ? { ok: true, text: t("edit.fader.setOk") } : { ok: 
 const VOL_GET = "osascript -e 'output volume of (get volume settings)'";
 const VOL_SET = 'osascript -e "set volume output volume $PAD_VALUE"';
 
+// Free columns for a wide key on its row (ignoring the key itself): { col, w } or null.
+function fitWide(p, btn, widths) {
+  for (const w of widths) {
+    for (let col = Math.min(btn.col, p.cols - w); col >= Math.max(0, btn.col - (w - 1)); col--) {
+      let free = true;
+      for (let i = col; i < col + w; i++) if (buttonAt(p, i, btn.row, btn)) free = false;
+      if (free) return { col, w };
+    }
+  }
+  return null;
+}
+
+function failWith(key) {
+  S.err = t(key);
+  setStatus();
+  renderInspector(); // puts the kind selector back to the real value
+}
+
 function setKind(btn, kind) {
+  if (kind === "radio") {
+    // One radio per pad: a single <audio> element on the tablet and one player on the Mac.
+    if (S.cfg.pages.some((pg) => pg.buttons.some((x) => x !== btn && x.kind === "radio"))) return failWith("edit.radio.one");
+    const fit = fitWide(page(), btn, [3, 2]);
+    if (!fit) return failWith("edit.radio.noRoom");
+    btn.col = fit.col;
+    btn.w = fit.w;
+  } else {
+    btn.w = 1;
+  }
   btn.kind = kind;
+  S.err = "";
   // A new fader starts out with the Mac's volume: it is the most common use case.
   if (kind === "fader" && !btn.fader.set.trim()) btn.fader = { get: VOL_GET, set: VOL_SET };
+  touch();
+  renderGrid();
+  renderInspector();
+}
+
+function setWidth(btn, w) {
+  const fit = fitWide(page(), btn, [w]);
+  if (!fit) return failWith("edit.radio.noRoom");
+  btn.col = fit.col;
+  btn.w = w;
+  S.err = "";
   touch();
   renderGrid();
   renderInspector();
@@ -556,6 +617,7 @@ function renderInspector() {
     return;
   }
   const isFader = btn.kind === "fader";
+  const isRadio = btn.kind === "radio";
   const preview = () => renderGrid();
   const [mainBox, holdBox, ledBox, getBox, setBox] = [h("div"), h("div"), h("div"), h("div"), h("div")];
   const testBtn = h("button", { class: "btn primary", type: "button", disabled: !btn.steps.length, onclick: () => runTest(btn.steps, mainBox, testBtn, btn.confirm) }, t("edit.insp.test"));
@@ -568,8 +630,15 @@ function renderInspector() {
     h("button", { class: "btn danger", type: "button", onclick: () => remove(btn) }, t("edit.insp.delete")),
   );
 
+  const radioSec = () => h("div", { class: "sec" },
+    h("h3", {}, t("edit.insp.radio")),
+    h("p", { class: "hint" }, t("edit.radio.hint")),
+    field(t("edit.radio.width"), h("select", { "aria-label": t("edit.radio.width"), onchange: (e) => setWidth(btn, Number(e.target.value)) },
+      ...[2, 3, 4].filter((n) => n <= page().cols).map((n) => h("option", { value: String(n), selected: btn.w === n }, String(n))))),
+    common,
+  );
   insp.replaceChildren(
-    h("div", { class: "sec" },
+    ...(isRadio ? [] : [h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.appearance")),
       field(t("edit.insp.label"), text(btn, "label", { after: preview, max: 40 })),
       field(t("edit.insp.icon"), (() => {
@@ -580,19 +649,20 @@ function renderInspector() {
       h("div", { class: "field" }, h("span", {}, t("edit.insp.color")),
         h("div", { class: "swatches" }, ...COLORS.map((c) =>
           h("button", { class: "swatch", type: "button", dataset: { color: c }, title: c, "aria-pressed": String(btn.color === c), onclick: () => { btn.color = c; touch(); preview(); renderInspector(); } })))),
-    ),
+    )]),
     h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.behavior")),
       field(t("edit.insp.kind"), h("select", { "aria-label": t("edit.insp.kind"), onchange: (e) => setKind(btn, e.target.value) },
-        h("option", { value: "button", selected: !isFader }, t("edit.insp.kind.button")),
-        h("option", { value: "fader", selected: isFader }, t("edit.insp.kind.fader")))),
-      ...(isFader ? [] : [
+        h("option", { value: "button", selected: !isFader && !isRadio }, t("edit.insp.kind.button")),
+        h("option", { value: "fader", selected: isFader }, t("edit.insp.kind.fader")),
+        h("option", { value: "radio", selected: isRadio }, t("edit.insp.kind.radio")))),
+      ...(isFader || isRadio ? [] : [
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.confirm, onchange: (e) => { btn.confirm = e.target.checked; touch(); } }), `${t("edit.insp.confirm")} `, h("small", {}, t("edit.insp.confirmHint"))),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.showOutput, onchange: (e) => { btn.showOutput = e.target.checked; touch(); } }), t("edit.insp.showOutput")),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.toggle, onchange: (e) => { btn.toggle = e.target.checked; touch(); preview(); } }), `${t("edit.insp.toggle")} `, h("small", {}, t("edit.insp.toggleHint"))),
       ]),
     ),
-    ...(isFader
+    ...(isRadio ? [radioSec()] : isFader
       ? [
           h("div", { class: "sec" },
             h("h3", {}, t("edit.insp.fader")),
@@ -628,8 +698,12 @@ function renderInspector() {
 
 function duplicate(btn) {
   const p = page();
+  if (btn.kind === "radio") {
+    S.err = t("edit.radio.one");
+    return setStatus();
+  }
   const free = [];
-  for (let row = 0; row < p.rows; row++) for (let col = 0; col < p.cols; col++) if (!p.buttons.some((b) => b.col === col && b.row === row)) free.push({ col, row });
+  for (let row = 0; row < p.rows; row++) for (let col = 0; col < p.cols; col++) if (!buttonAt(p, col, row)) free.push({ col, row });
   if (!free.length) {
     S.err = t("edit.dup.noFree");
     return setStatus();

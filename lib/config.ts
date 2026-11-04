@@ -35,7 +35,7 @@ export interface Button {
   label: string;
   icon: string;
   color: Color;
-  kind: "button" | "fader";
+  kind: "button" | "fader" | "radio";
   confirm: boolean;
   showOutput: boolean;
   steps: Step[];
@@ -43,6 +43,7 @@ export interface Button {
   led: string; // shell command: exit 0 = on (kind "button" only)
   toggle: boolean; // latching: the pad remembers on/off, flipped by each successful tap (ignored when `led` is set)
   fader: Fader; // kind "fader" only
+  w: number; // columns spanned: 1, except kind "radio" (2–4)
 }
 export interface Page {
   id: string;
@@ -187,6 +188,7 @@ export function validateConfig(raw: unknown): PadConfig {
   const root = obj(raw, "config");
   const pageIds: Record<string, true> = {};
   const buttonIds: Record<string, true> = {};
+  let radioSeen = false;
   const pages: Page[] = arr(root.pages, "pages", LIMITS.pages).map((p, pi) => {
     const w = `pages[${pi}]`;
     const page = obj(p, w);
@@ -204,16 +206,26 @@ export function validateConfig(raw: unknown): PadConfig {
       buttonIds[bid] = true;
       const col = int(btn.col, `${bw}.col`, 0, cols - 1);
       const row = int(btn.row, `${bw}.row`, 0, rows - 1);
-      if (cells[`${col},${row}`]) throw new ConfigError(`${bw}: cell (${col},${row}) already taken`);
-      cells[`${col},${row}`] = true;
+      const kind = btn.kind === undefined ? "button" : btn.kind;
+      if (kind !== "button" && kind !== "fader" && kind !== "radio") throw new ConfigError(`${bw}.kind: button/fader/radio`);
+      const isFader = kind === "fader";
+      const isRadio = kind === "radio";
+      const inert = isFader || isRadio; // no tap actions of their own
+      const span = isRadio ? (btn.w === undefined ? 3 : int(btn.w, `${bw}.w`, 2, 4)) : 1;
+      if (col + span > cols) throw new ConfigError(`${bw}: does not fit in ${cols} columns`);
+      for (let c = col; c < col + span; c++) {
+        if (cells[`${c},${row}`]) throw new ConfigError(`${bw}: cell (${c},${row}) already taken`);
+        cells[`${c},${row}`] = true;
+      }
+      if (isRadio) {
+        if (radioSeen) throw new ConfigError(`${bw}: only one radio is allowed`);
+        radioSeen = true; // a single <audio> on the tablet
+      }
       const color = btn.color === undefined ? "slate" : btn.color;
       if (!COLORS.includes(color as Color)) throw new ConfigError(`${bw}.color: ${COLORS.join("/")}`);
-      const kind = btn.kind === undefined ? "button" : btn.kind;
-      if (kind !== "button" && kind !== "fader") throw new ConfigError(`${bw}.kind: button/fader`);
       const f = btn.fader === undefined ? {} : obj(btn.fader, `${bw}.fader`);
       const fader = { get: str(f.get, `${bw}.fader.get`, { max: 2000 }), set: str(f.set, `${bw}.fader.set`, { max: 2000 }) };
-      if (kind === "fader" && !fader.set.trim()) throw new ConfigError(`${bw}.fader.set: required`);
-      const isFader = kind === "fader";
+      if (isFader && !fader.set.trim()) throw new ConfigError(`${bw}.fader.set: required`);
       return {
         id: bid,
         col,
@@ -222,13 +234,14 @@ export function validateConfig(raw: unknown): PadConfig {
         icon: str(btn.icon, `${bw}.icon`, { max: 12 }),
         color: color as Color,
         kind,
-        confirm: !isFader && btn.confirm === true,
-        showOutput: !isFader && btn.showOutput === true,
-        steps: isFader ? [] : validateSteps(btn.steps ?? [], `${bw}.steps`),
-        hold: isFader ? [] : validateSteps(btn.hold ?? [], `${bw}.hold`),
-        led: isFader ? "" : str(btn.led, `${bw}.led`, { max: 2000 }),
-        toggle: !isFader && btn.toggle === true,
+        confirm: !inert && btn.confirm === true,
+        showOutput: !inert && btn.showOutput === true,
+        steps: inert ? [] : validateSteps(btn.steps ?? [], `${bw}.steps`),
+        hold: inert ? [] : validateSteps(btn.hold ?? [], `${bw}.hold`),
+        led: inert ? "" : str(btn.led, `${bw}.led`, { max: 2000 }),
+        toggle: !inert && btn.toggle === true,
         fader: isFader ? fader : { get: "", set: "" },
+        w: span,
       };
     });
     return { id: pid, name: str(page.name, `${w}.name`, { required: true, max: 30 }), cols, rows, buttons };
@@ -254,6 +267,7 @@ export interface PublicButton {
   showOutput: boolean;
   hasHold: boolean;
   hasLed: boolean;
+  w: number;
 }
 export interface PublicPage extends Omit<Page, "buttons"> {
   buttons: PublicButton[];
@@ -276,6 +290,7 @@ export function publicView(cfg: PadConfig): { pages: PublicPage[] } {
         showOutput: x.showOutput,
         hasHold: x.hold.length > 0,
         hasLed: x.led.trim() !== "" || x.toggle,
+        w: x.w,
       })),
     })),
   };
@@ -286,7 +301,7 @@ const b = (
   extra: Partial<Pick<Button, "confirm" | "showOutput" | "hold" | "led" | "toggle">> = {},
 ): Button => ({
   id, col, row, label, icon, color, kind: "button", confirm: false, showOutput: false, steps,
-  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, ...extra,
+  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: 1, ...extra,
 });
 
 // Example pad on first start: harmless actions, all editable.
@@ -321,7 +336,7 @@ export function seedConfig(): PadConfig {
           ]),
           {
             id: "volume", col: 2, row: 1, label: "Volume", icon: "🎚️", color: "teal", kind: "fader",
-            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false,
+            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: 1,
             fader: {
               get: "osascript -e 'output volume of (get volume settings)'",
               set: 'osascript -e "set volume output volume $PAD_VALUE"',

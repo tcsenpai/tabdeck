@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ConfigError, validateStep, validateSteps } from "../lib/config.ts";
+import { ConfigError, seedConfig, validateStep, validateSteps } from "../lib/config.ts";
 import { ACTIONS, macScript, normalizeArgs } from "../lib/macos.ts";
 import { runSteps } from "../lib/run.ts";
 
@@ -110,5 +110,37 @@ describe("latching buttons", () => {
     s2.flip(id);
     s2.invalidate();
     expect((await s2.get()).leds[id]).toBe(false);
+  });
+});
+
+describe("radio widget", () => {
+  const radioCfg = (over: object, extra: object[] = []) => {
+    const c = structuredClone(seedConfig());
+    c.pages[0].buttons = [
+      { ...c.pages[0].buttons[0], id: "r", col: 0, row: 2, kind: "radio", w: 3, ...over },
+      ...extra,
+    ] as typeof c.pages[0].buttons;
+    return c;
+  };
+  test("a radio covers w cells: it must fit the grid and may not overlap a key", async () => {
+    const { validateConfig, ConfigError } = await import("../lib/config.ts");
+    expect(validateConfig(radioCfg({})).pages[0].buttons[0]).toMatchObject({ kind: "radio", w: 3, steps: [], hold: [], led: "", toggle: false });
+    expect(() => validateConfig(radioCfg({ col: 2, w: 3 }))).toThrow(ConfigError); // 2 + 3 > 4 columns
+    const base = seedConfig().pages[0].buttons[0];
+    expect(() => validateConfig(radioCfg({}, [{ ...base, id: "x", col: 2, row: 2 }]))).toThrow(ConfigError); // under the radio
+    expect(validateConfig(radioCfg({}, [{ ...base, id: "x", col: 3, row: 2 }])).pages[0].buttons).toHaveLength(2);
+    for (const bad of [1, 5, 2.5, "3"]) expect(() => validateConfig(radioCfg({ w: bad }))).toThrow(ConfigError);
+  });
+  test("only one radio per pad, and the tablet is told its width", async () => {
+    const { validateConfig, ConfigError, publicView } = await import("../lib/config.ts");
+    const base = seedConfig().pages[0].buttons[0];
+    expect(() => validateConfig(radioCfg({}, [{ ...base, id: "r2", col: 0, row: 1, kind: "radio", w: 2 }]))).toThrow(ConfigError);
+    expect(publicView(validateConfig(radioCfg({}))).pages[0].buttons[0]).toMatchObject({ kind: "radio", w: 3 });
+  });
+  test("plain keys and faders always span one column, whatever the file says", async () => {
+    const { validateConfig } = await import("../lib/config.ts");
+    const c = structuredClone(seedConfig());
+    (c.pages[0].buttons[0] as { w: number }).w = 4;
+    expect(validateConfig(c).pages[0].buttons[0].w).toBe(1);
   });
 });

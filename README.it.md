@@ -116,12 +116,31 @@ e quindi richiedono il permesso *Accessibilità*.
 Sistema → Privacy e sicurezza → Accessibilità → aggiungi il programma che lancia `bun`
 (es. Terminale). Senza, il pulsante fallisce e l'avviso lo spiega.
 
+
+### Radio (autoradio)
+
+Un widget largo 2–4 celle per [Nightride FM](https://nightride.fm) (11 stazioni synthwave/
+cyberpunk): manopola play/pausa, display LCD con stazione e brano in onda, ‹ › per cambiare
+stazione, scala di sintonia ed equalizzatore. Suona **sul Mac per impostazione predefinita**
+(il server lancia `mpv`, o `ffplay`, cercati in `/opt/homebrew/bin`, `/usr/local/bin` o `PATH`;
+si può forzare con `RADIO_PLAYER="comando argomenti"`, l'URL dello stream viene aggiunto in
+coda); l'interruttore **MAC/TAB** sul widget la sposta sull'altoparlante del tablet (un
+semplice `<audio>`, MP3). Stazione e uscita le ricorda il server in `data/radio.json`, così
+tutti i tablet concordano. Continua a suonare cambiando pagina, uno stream caduto si riconnette
+(dopo 5 fallimenti rapidi di fila mostra «NESSUN SEGNALE») e un player rimasto orfano dopo un
+server ucciso viene fermato al riavvio successivo. Una sola radio per pad. I titoli arrivano dal
+feed pubblico `/meta` di Nightride, letto dal browser. Gli stream sono di Nightride FM: il
+progetto non è affiliato, quindi sostieni la stazione.
+
 ## Modello di sicurezza
 
 Il server ascolta sulla LAN, e un pulsante può eseguire comandi sul Mac. Quindi:
 
 - Il tablet può **solo premere pulsanti già definiti**: `GET /api/pad` non contiene mai i
   comandi, `POST /api/run/<id>` esegue solo ciò che sta in `data/pad.json`.
+- `POST /api/radio` (il widget radio) è aperto al pad come le rotte di pressione, ma accetta
+  solo una stazione da una lista fissa di 11 nomi e un'uscita (`mac`/`tablet`): non può far
+  aprire al server un URL qualsiasi né eseguire altro.
 - **Editor, salvataggio, prova e catalogo azioni** (`/edit`, `/api/config`, `/api/test`,
   `/api/actions`, `/api/macscript`) rispondono solo se la connessione parte dal Mac stesso
   (loopback o uno dei suoi IP) **e** l'header `Host` è `localhost` o un IP del Mac (blocca il
@@ -151,6 +170,7 @@ lib/macos.ts       catalogo delle azioni Mac (AppleScript generato)
 lib/keys.ts        "cmd+shift+4" → AppleScript System Events
 lib/guard.ts       loopback/Host/Origin
 lib/state.ts       stato dei LED
+lib/radio.ts       riproduttore radio sul Mac (mpv/ffplay), lista chiusa di stazioni
 public/pad.*       pad per il tablet
 public/edit.*      editor
 public/common.js   DOM helper + tile condiviso pad/editor
@@ -164,3 +184,5 @@ tests/             bun test
   spegnere lo schermo del Duet regola il blocco schermo di ChromeOS.
 - Se il Mac va in stop il pad segnala il puntino rosso in basso e riprova ogni 5 s.
 - Un solo editor alla volta: l'ultimo salvataggio vince.
+- Radio: i titoli e l'ascolto sul tablet richiedono che il tablet raggiunga internet; per ascoltarla
+  sul Mac serve [mpv](https://mpv.io) o ffplay (`brew install mpv`). Non provata sul Duet.

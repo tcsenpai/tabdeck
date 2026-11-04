@@ -98,6 +98,18 @@ Terminal), because launchd starts the process.
   `$PAD_VALUE` (an environment variable, never interpolated into the string) about 10
   times per second. A "read value" command must print a number 0–100; the fader then
   follows the Mac's real value, without overriding your finger or your last gesture (1.5 s).
+- **Radio (car stereo):** a widget 2–4 cells wide for [Nightride FM](https://nightride.fm)
+  (11 synthwave/cyberpunk stations): play/pause knob, LCD with station and the track on
+  air, ‹ › to change station, a tuner scale and an equalizer. It plays **on the Mac by
+  default** (the server runs `mpv`, or `ffplay`, found in `/opt/homebrew/bin`, `/usr/local/bin`
+  or `PATH`; override with `RADIO_PLAYER="cmd args"`, the stream URL is appended); the **MAC/TAB**
+  switch on the widget moves it to the tablet's own speaker (a plain `<audio>` element,
+  MP3). Station and output are remembered by the server in `data/radio.json`, so every
+  tablet agrees. It keeps playing when you change page, a dropped stream reconnects
+  (after 5 quick failures in a row it shows "NO SIGNAL"), and a player left behind by a server
+  that was killed is stopped at the next start. One radio per pad. Titles come from Nightride's
+  public `/meta` feed, read by the browser. Streams belong to Nightride FM: this project is not
+  affiliated with them, so please support the station.
 - **Mac actions catalog:** typed templates that generate AppleScript (see below).
 - **`when` guard** and **`continueOnError`** (see below).
 - **Language:** English or Italian (see below).
@@ -171,6 +183,9 @@ The server listens on the LAN and a button can run commands on your Mac. So:
 - POST/PUT requests with an `Origin` from another site are rejected (CSRF).
 - **The pad has no authentication**: anyone on your LAN can press the buttons. Use
   *confirm* for dangerous buttons, and put a firewall in front if the network is untrusted.
+- `POST /api/radio` (the radio widget) is open to the pad like the press endpoints, but it
+  only accepts a station from a fixed list of 11 names and an output (`mac`/`tablet`): it can
+  never make the server open an arbitrary URL or run anything else.
 
 ## Data
 
@@ -190,6 +205,7 @@ lib/macos.ts       Mac actions catalog (generated AppleScript)
 lib/keys.ts        "cmd+shift+4" → System Events AppleScript
 lib/guard.ts       loopback / Host / Origin checks
 lib/state.ts       LED and fader state probes
+lib/radio.ts       Mac-side radio player (mpv/ffplay), station whitelist
 public/pad.*       the pad for the tablet
 public/edit.*      the editor
 public/common.js   DOM helper + tile shared by pad and editor
@@ -203,6 +219,8 @@ tests/             bun test
   localhost): to keep the tablet's screen on, adjust the ChromeOS screen lock settings.
 - If the Mac sleeps, the pad shows a red dot at the bottom and retries every 5 s.
 - One editor at a time: the last save wins.
+- Radio: titles and tablet playback need the tablet to reach the internet; Mac playback needs
+  [mpv](https://mpv.io) or ffplay (`brew install mpv`). Not tested on the Duet.
 - macOS only (it relies on `osascript`, `open` and `zsh`).
 
 ## Tested on

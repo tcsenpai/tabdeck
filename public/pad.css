@@ -62,6 +62,8 @@ body {
   -webkit-user-select: none;
   touch-action: manipulation;
   perspective: 850px;
+  --rest-x: -6deg;
+  --rest-y: -17deg;
 }
 /* Ombra a terra */
 .tile::after {
@@ -78,7 +80,7 @@ body {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transform: translateZ(var(--push)) rotateX(calc(-6deg + var(--rx, 0deg) + var(--flip))) rotateY(calc(-17deg + var(--ry, 0deg)));
+  transform: translateZ(var(--push)) rotateX(calc(var(--rest-x) + var(--rx, 0deg) + var(--flip))) rotateY(calc(var(--rest-y) + var(--ry, 0deg)));
   transition: transform 0.5s cubic-bezier(0.3, 1.35, 0.5, 1);
 }
 .tile:active { --push: -9px; }

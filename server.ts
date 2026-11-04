@@ -4,6 +4,7 @@
 import { ConfigError, createStore, faderValue, publicView, validateStep, validateSteps, type Step } from "./lib/config.ts";
 import { createState } from "./lib/state.ts";
 import { catalog, macScript } from "./lib/macos.ts";
+import { createRadio, radioCommand } from "./lib/radio.ts";
 import { editorAllowed, sameOriginOk } from "./lib/guard.ts";
 import { runSteps } from "./lib/run.ts";
 import { networkInterfaces } from "node:os";
@@ -16,6 +17,8 @@ const MAX_BODY = 512 * 1024;
 
 const store = createStore(`${DATA_DIR}/pad.json`);
 const state = createState(() => store.config, () => store.rev, `${DATA_DIR}/toggles.json`);
+const radio = createRadio(DATA_DIR);
+const hasRadio = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "radio"));
 const running: Record<string, true> = {};
 
 const noCache = { "Cache-Control": "no-store" };
@@ -82,6 +85,7 @@ const server = Bun.serve({
         if (method === "GET" && path === "/api/config") return json({ rev: store.rev, config: store.config, lan: lanUrls() });
         if (method === "PUT" && path === "/api/config") {
           const cfg = store.save(await readJson(req));
+          if (!hasRadio()) radio.stop(); // the widget was removed: stop the Mac player too
           return json({ rev: store.rev, config: cfg });
         }
         if (method === "GET" && path === "/api/actions") return json(catalog());
@@ -106,7 +110,14 @@ const server = Bun.serve({
 
       if (method === "GET" && path === "/api/pad") return json({ rev: store.rev, ...publicView(store.config) });
       if (method === "GET" && path === "/api/rev") return json({ rev: store.rev });
-      if (method === "GET" && path === "/api/state") return json(await state.get());
+      if (method === "GET" && path === "/api/state") {
+        const s = await state.get();
+        return json(hasRadio() ? { ...s, radio: radio.get() } : s);
+      }
+      if (method === "POST" && path === "/api/radio") {
+        if (!hasRadio()) return json({ error: "No radio on this pad" }, 404);
+        return json(radio.apply(radioCommand(await readJson(req))));
+      }
 
       const act = path.match(/^\/api\/(run|hold|fader)\/([a-z0-9_-]{1,40})$/);
       if (method === "POST" && act) {
@@ -150,3 +161,7 @@ const server = Bun.serve({
 });
 
 console.log(`Macro pad:  http://localhost:${server.port}/   (editor: /edit)`);
+
+// Never leave a player running behind us.
+process.on("exit", () => radio.stop());
+for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => process.exit(0));

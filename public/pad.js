@@ -1,5 +1,6 @@
 import { api, applyGrid, h, tileEl } from "/assets/common.js";
 import { t, register, applyStatic } from "/assets/i18n.js";
+import { mountRadio, syncRadio } from "/assets/radio.js";
 import en from "/assets/locale-pad-en.js";
 import it from "/assets/locale-pad-it.js";
 
@@ -151,11 +152,12 @@ function wireFader(b, el) {
 function render() {
   const p = page();
   state.pageId = p.id;
-  state.live = p.buttons.some((b) => b.hasLed || b.kind === "fader");
+  state.live = p.buttons.some((b) => b.hasLed || b.kind === "fader" || b.kind === "radio");
   applyGrid(gridEl, p);
   const tiles = p.buttons.map((b) => {
     const el = tileEl(b);
-    if (b.kind === "fader") wireFader(b, el);
+    if (b.kind === "radio") mountRadio(el);
+    else if (b.kind === "fader") wireFader(b, el);
     else wireButton(b, el);
     return el;
   });
@@ -211,7 +213,7 @@ async function goPage(id, dir) {
 // Horizontal swipe = previous/next page (not on faders, which use dragging).
 let swipe = null;
 gridEl.addEventListener("touchstart", (e) => {
-  swipe = e.touches.length === 1 && !e.target.closest(".fader") ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  swipe = e.touches.length === 1 && !e.target.closest(".fader, .radio") ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
 }, { passive: true });
 gridEl.addEventListener("touchend", (e) => {
   if (!swipe) return;
@@ -232,6 +234,7 @@ function applyState() {
     if (Object.hasOwn(leds, id)) el.dataset.on = leds[id] ? "1" : "0";
     if (el._fader && Object.hasOwn(faders, id)) el._fader.sync(faders[id]);
   }
+  if (state.data.radio) syncRadio(state.data.radio);
 }
 
 async function refreshState() {
