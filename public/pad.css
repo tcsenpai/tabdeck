@@ -428,3 +428,9 @@ body.fx::after {
 .iconbtn.on { color: var(--ok); border-color: var(--ok); box-shadow: 0 0 10px -3px var(--ok); }
 /* A key hidden for the app in front (variant "hidden"): the cell stays empty and cannot be touched. */
 .tile.gone { visibility: hidden; pointer-events: none; }
+
+/* Version of the pad's files (bottom left); tap = reload. */
+.ver {
+  position: fixed; left: 4px; bottom: 0; z-index: 12; padding: 0 3px; border: 0; background: none;
+  font: 8px/10px var(--mono); letter-spacing: 0.08em; color: var(--muted); opacity: 0.55; cursor: pointer;
+}

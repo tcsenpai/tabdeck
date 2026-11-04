@@ -3,6 +3,7 @@
 //   /edit    editor (Mac only, via localhost)
 import type { Server } from "bun";
 import { ensureCert } from "./lib/tls.ts";
+import { createBuildId } from "./lib/build.ts";
 import { ConfigError, createStore, faderValue, publicView, validateStep, validateSteps, type Button, type Step } from "./lib/config.ts";
 import { createState } from "./lib/state.ts";
 import { catalog, macScript } from "./lib/macos.ts";
@@ -66,6 +67,7 @@ const KIOSK_URL = (() => {
 })();
 const running: Record<string, true> = {};
 
+const buildId = createBuildId(PUBLIC_DIR); // fingerprint of public/: the pad reloads itself when it changes
 const noCache = { "Cache-Control": "no-store" };
 const json = (data: unknown, status = 200) => Response.json(data, { status, headers: noCache });
 
@@ -174,8 +176,8 @@ async function handle(req: Request, srv: Server): Promise<Response> {
         return serveFile(name);
       }
 
-      if (method === "GET" && path === "/api/pad") return json({ rev: store.rev, kiosk: KIOSK_URL, https: httpsPort, ...publicView(store.config) });
-      if (method === "GET" && path === "/api/rev") return json({ rev: store.rev });
+      if (method === "GET" && path === "/api/pad") return json({ rev: store.rev, build: buildId(), kiosk: KIOSK_URL, https: httpsPort, ...publicView(store.config) });
+      if (method === "GET" && path === "/api/rev") return json({ rev: store.rev, build: buildId() });
       // The chips come from pad.json, never from the request: a client cannot choose what the server runs.
       if (method === "GET" && path === "/api/info") return json(await info.read(store.config.bar));
       if (method === "GET" && path === "/api/state") {

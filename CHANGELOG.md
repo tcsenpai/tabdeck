@@ -5,6 +5,8 @@ All notable changes. Newest first. The project is early and has no tagged releas
 ## Unreleased
 
 ### Added
+- **Version label and auto-update:** the pad shows a fingerprint of its files (bottom left) and reloads
+  itself when it changes (`lib/build.ts`, `build` in `/api/rev` and `/api/pad`); tap it to reload.
 - **Automatic pages:** the pad follows the app in front on the Mac (optional). Rules match an app
   name or bundle id, optionally a browser URL or window title; the first match wins. The editor can
   detect the front app, offers 23 known apps and builds a starter page of default shortcuts for 9 of

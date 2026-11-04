@@ -463,6 +463,7 @@ async function load() {
   const d = await api("/api/pad");
   d.pages = visiblePages(d.pages);
   state.cfg = d;
+  showBuild(d.build);
   setFavs(d.radioFavs);
   kioskBtn.hidden = d.kiosk === "off";
   paintAuto();
@@ -479,11 +480,28 @@ function setOnline(on) {
 }
 
 // Light polling: reload only when the revision changes (edit from the Mac), then refresh LEDs/faders.
+// Version of the pad's files, bottom left. A change found by the poll reloads the page after a short notice.
+function showBuild(build) {
+  if (!build) return;
+  state.build = build;
+  $("ver").hidden = false;
+  $("ver").textContent = build;
+}
+$("ver").addEventListener("click", () => location.reload());
+function updateTo(build) {
+  $("ver").textContent = `${state.build} → ${build}`;
+  toast(t("pad.updating"));
+  state.build = build; // do not announce it twice while the reload starts
+  setTimeout(() => location.reload(), 800);
+}
+
 async function poll() {
   if (!document.hidden && !switching) {
     try {
-      const { rev } = await api("/api/rev");
+      const { rev, build } = await api("/api/rev");
       setOnline(true);
+      // The files of the pad changed on the Mac (an update): reload, so this tablet runs the new code.
+      if (build && state.build && build !== state.build && !document.querySelector(".tile[data-state=\"running\"]")) return updateTo(build);
       if (rev !== state.rev) await load();
       else await refreshState();
     } catch {

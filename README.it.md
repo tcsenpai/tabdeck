@@ -268,6 +268,14 @@ scelti; ogni tablet può spegnerli col pulsante **▤** della barra.
 
 ![Effetti overlay (CRT, barra di scansione, vignettatura, bordi cromatici) con l'alone ambientale](docs/screenshots/fx-glow.jpg)
 
+### Versione e aggiornamento automatico
+
+Un piccolo hash in basso a sinistra del pad è l'impronta dei file del pad (`public/`). Il pad lo
+controlla col normale polling (`/api/rev`, ogni 2,5 s) e, quando cambia (hai aggiornato TabDeck sul
+Mac), mostra «Nuova versione trovata, ricarico…» e si ricarica da solo: un tablet aperto non resta
+più con script vecchi. Tocca l'hash per ricaricare a mano. Il ricaricamento aspetta se un pulsante
+è in esecuzione. L'impronta calcola nomi, dimensioni e date dei file (`lib/build.ts`).
+
 ### Barra info
 
 Fino a sei piccoli indicatori nella barra in basso del pad (CPU, RAM, batteria, disco, volume,
@@ -356,6 +364,7 @@ lib/viz.ts         avvia l'helper audio e distribuisce gli spettri (SSE)
 lib/context.ts     app/finestra/URL in primo piano e regole delle pagine automatiche
 lib/info.ts        letture della barra info (CPU, RAM, batteria, ...)
 lib/mic.ts         livello/click del microfono del Mac (angoli, tile sensibili al suono)
+lib/build.ts       impronta di public/ (etichetta di versione e ricarica automatica)
 lib/tls.ts         certificato autofirmato per il listener HTTPS
 lib/recorder.ts    registratore di macro: avvia l'helper, trasforma gli eventi in passi
 lib/radiobrowser.ts  client di radio-browser.info (ricerca, risoluzione, controlli URL)

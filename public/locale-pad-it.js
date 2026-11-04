@@ -17,6 +17,8 @@ export default {
   "pad.auto": "Segui l'app in primo piano sul Mac (tocca per sospendere)",
   "pad.glow": "Alone ambientale che segue l'audio del Mac",
   "pad.fx": "Effetti overlay sul pad (tocca per spegnere/accendere su questo tablet)",
+  "pad.ver": "Versione del pad (tocca per ricaricare)",
+  "pad.updating": "Nuova versione trovata, ricarico…",
   "pad.mic": "Angoli che reagiscono al rumore: tocca per alternare spento / microfono del tablet / microfono del Mac",
   "pad.mic.insecure": "Questo tablet offre il microfono solo su https. Apri {url} (tocca Avanzate → Procedi, una volta), poi usa ◩ lì.",
   "pad.mic.denied": "Microfono non consentito su questo tablet.",

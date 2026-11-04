@@ -159,6 +159,11 @@ Terminal), because launchd starts the process.
   stops the animations. On by default once chosen; each tablet can switch them off with the **▤** bar button.
 
   ![Overlay effects (CRT, scan bar, vignette, chromatic edges) with the ambient glow](docs/screenshots/fx-glow.jpg)
+- **Version label and auto-update:** a tiny hash at the bottom left of the pad is a fingerprint of the
+  pad's files (`public/`). The pad checks it with its normal poll (`/api/rev`, every 2.5 s) and, when
+  it changes (you updated TabDeck on the Mac), shows "New version found, reloading…" and reloads itself,
+  so an open tablet never keeps running old scripts. Tap the hash to reload by hand. A reload waits while
+  a button is running. The fingerprint hashes file names, sizes and times (`lib/build.ts`).
 - **Visualizer tile:** a spectrum of whatever the Mac is playing (any app), drawn on the tablet
   like the old media-player visualizations, in five styles you pick per tile (bars with falling peak caps, mirror, segmented blocks, wave, ring), resizable, several
   allowed. `tools/sysaudio.swift` captures the system output with a Core Audio *process tap*
@@ -341,6 +346,7 @@ lib/viz.ts         runs the audio helper and fans spectrum frames out (SSE)
 lib/context.ts     frontmost app/window/URL probe and the automatic-page rules
 lib/info.ts        info-bar readers (CPU, RAM, battery, ...)
 lib/mic.ts         Mac microphone level/onset stream (mic corners, sound-reactive tiles)
+lib/build.ts       fingerprint of public/ (the pad's version label and auto-reload)
 lib/tls.ts         self-signed certificate for the HTTPS listener
 lib/recorder.ts    macro recorder: runs the helper, turns events into steps
 lib/radiobrowser.ts  radio-browser.info client (search, resolve, URL checks)

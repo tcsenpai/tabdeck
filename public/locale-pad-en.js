@@ -17,6 +17,8 @@ export default {
   "pad.auto": "Follow the app in front on the Mac (tap to pause)",
   "pad.glow": "Ambient glow that follows the Mac's audio",
   "pad.fx": "Overlay effects over the pad (tap to switch off/on on this tablet)",
+  "pad.ver": "Pad version (tap to reload)",
+  "pad.updating": "New version found, reloading…",
   "pad.mic": "Corners that react to noise: tap to cycle off / this tablet's microphone / the Mac's microphone",
   "pad.mic.insecure": "This tablet only offers its microphone over https. Open {url} (tap Advanced → Proceed once), then use ◩ there.",
   "pad.mic.denied": "Microphone not allowed on this tablet.",
