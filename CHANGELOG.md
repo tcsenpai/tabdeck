@@ -13,6 +13,9 @@ All notable changes. Newest first. The project is early and has no tagged releas
 - **Info bar:** up to six system chips (CPU, RAM, battery, disk, volume, uptime, load, clock) in the
   pad's bottom bar, chosen in the editor. Stock macOS tools only, cached for 2 s, polled every 5 s
   while the tab is visible. Hidden on narrow screens.
+- **Mic corners:** only the four corners flash with microphone noise (key clicks, taps), from the
+  tablet's own microphone (browser-side analysis) or the Mac's (`tools/mic.swift`, numbers only over
+  `/api/mic`). Offered by the editor, chosen per tablet with the ◩ bar button, instead of the glow.
 - **Per-app key variants:** a key can look and act differently (or disappear) depending on the app in
   front on the Mac; first match wins, any number of keys per app. The state endpoint sends variant
   indexes only; a tap carries the variant it shows and is refused with 409 if the app in front

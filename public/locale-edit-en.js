@@ -227,6 +227,8 @@ export default {
   "edit.var.down": "Later",
   "edit.var.remove": "Remove variant",
   "edit.var.full": "At most {max} variants per key.",
+  "edit.mic.enable": "Offer the mic corners",
+  "edit.mic.hint": "Only the four corners light up with the noise the Mac's microphone hears, like a mechanical keyboard's lights: each key click or tap flashes the next corner. Each tablet picks its source with the ◩ button in the bar (instead of the glow): its own microphone, analysed on the tablet (nothing is sent; browsers offer it only over https or localhost, or after allowing the pad's address in chrome://flags/#unsafely-treat-insecure-origin-as-secure), or the Mac's microphone, analysed on the Mac, which sends only two numbers per frame. No audio is ever stored. For the Mac's, macOS asks once to allow the Microphone for the process that runs the server; it listens only while a tablet has it on.",
   "edit.rb.title": "Radio favourites",
   "edit.rb.hint": "Search internet radio stations and keep your favourites: they join the radio widget's ‹ › and the station tile's list.",
   "edit.rb.q": "Station name",

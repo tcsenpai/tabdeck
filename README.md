@@ -135,6 +135,15 @@ Terminal), because launchd starts the process.
   Audio Recording** permission, and the helper runs only while a tablet has the glow on. It is
   drawn with static gradients whose opacity and scale are eased every frame (no blur filter),
   and sleeps while the Mac is silent.
+- **Mic corners:** only the pad's four corners react to noise, like a mechanical keyboard's lights:
+  each key click, tap or clap flashes the next corner, and the level adds a faint glow. Turn on
+  "Offer the mic corners" in the editor; each tablet then cycles the **◩** bar button: off, **this
+  tablet's microphone** (analysed in the browser, nothing is sent; browsers offer it only over https
+  or localhost, otherwise allow the pad's address in `chrome://flags/#unsafely-treat-insecure-origin-as-secure`),
+  or **the Mac's microphone** (`tools/mic.swift`, compiled on first use, analysed on the Mac; the
+  server streams two numbers per frame, never audio, and listens only while a tablet has it on;
+  macOS asks once for the **Microphone** permission). It replaces the ambient glow on that tablet.
+  `MIC_HELPER="cmd args"` replaces the helper (e.g. `tools/mic --test-script`).
 - **Visualizer tile:** a spectrum of whatever the Mac is playing (any app), drawn on the tablet
   like the old media-player visualizations, in five styles you pick per tile (bars with falling peak caps, mirror, segmented blocks, wave, ring), resizable, several
   allowed. `tools/sysaudio.swift` captures the system output with a Core Audio *process tap*
@@ -248,6 +257,7 @@ Events and so need the Accessibility permission.
 | Automatic pages (window titles, browser URLs) | Automation: System Events, each browser (asked once) |
 | Visualizer, ambient glow | System Audio Recording |
 | Macro recording | Input Monitoring |
+| Mic corners, Mac's microphone | Microphone (the tablet's own needs none on the Mac) |
 | Info bar, radio favourites, profiles | none |
 
 ### Accessibility permission
@@ -307,14 +317,17 @@ lib/stations.ts    the radio stream whitelist
 lib/viz.ts         runs the audio helper and fans spectrum frames out (SSE)
 lib/context.ts     frontmost app/window/URL probe and the automatic-page rules
 lib/info.ts        info-bar readers (CPU, RAM, battery, ...)
+lib/mic.ts         Mac microphone level/onset stream for the mic corners
 lib/recorder.ts    macro recorder: runs the helper, turns events into steps
 lib/radiobrowser.ts  radio-browser.info client (search, resolve, URL checks)
 tools/sysaudio.swift  system-audio capture + FFT helper
 tools/recorder.swift  listen-only key/click recorder
+tools/mic.swift    microphone level + click detector (numbers only)
 docs/radio-browser-notes.md  what was learnt about the directory's API
 public/pad.*       the pad for the tablet
 public/edit.*      the editor (edit-auto/-bar/-radio/-record.js: its panels)
 public/bar.js      info chips on the pad
+public/corners.js  mic corners (tablet or Mac source)
 public/deco.js     decoration tiles (markup); deco.css has the styles
 public/edit-variants.js  the per-app variants panel
 public/templates.js  starter pages for automatic pages

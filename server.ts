@@ -11,6 +11,7 @@ import { createRadio, radioCommand } from "./lib/radio.ts";
 import { favId, isStation } from "./lib/stations.ts";
 import { resolveStream, searchStations } from "./lib/radiobrowser.ts";
 import { createViz, sseResponse } from "./lib/viz.ts";
+import { createMic } from "./lib/mic.ts";
 import { editorAllowed, sameOriginOk } from "./lib/guard.ts";
 import { runSteps } from "./lib/run.ts";
 import { networkInterfaces } from "node:os";
@@ -39,6 +40,9 @@ const fromDirectory = async <T>(p: Promise<T>): Promise<T | Response> => {
 // System-audio visualizer: the helper only runs while a browser is watching. VIZ_HELPER="cmd args"
 // replaces it (tests / `tools/sysaudio --test-tone`).
 const viz = createViz({ dir: DATA_DIR, helper: process.env.VIZ_HELPER?.trim() ? process.env.VIZ_HELPER.trim().split(/\s+/) : undefined });
+// The Mac's microphone for the "mic corners": two numbers per frame, never audio. MIC_HELPER="cmd args" replaces
+// the helper (tests / `tools/mic --test-script`, which never opens the microphone).
+const mic = createMic({ dir: DATA_DIR, helper: process.env.MIC_HELPER?.trim() ? process.env.MIC_HELPER.trim().split(/\s+/) : undefined });
 const hasViz = () => store.config.glow || store.config.pages.some((p) => p.buttons.some((b) => b.kind === "viz")); // the ambient glow or a visualizer tile
 const hasVariants = () => store.config.pages.some((p) => p.buttons.some((b) => b.variants.length));
 // Which variant of a key is active for the app in front (-1 = the base key).
@@ -193,6 +197,11 @@ const server = Bun.serve({
         srv.timeout(req, 0); // a long-lived stream: the default idle timeout would cut it
         return sseResponse(viz, req.signal);
       }
+      if (method === "GET" && path === "/api/mic") {
+        if (!store.config.micCorners) return json({ error: "Mic corners are not enabled on this pad" }, 404);
+        srv.timeout(req, 0);
+        return sseResponse(mic, req.signal);
+      }
       if (method === "POST" && path === "/api/radio") {
         if (!hasRadio()) return json({ error: "No radio on this pad" }, 404);
         return json(radio.apply(radioCommand(await readJson(req), knownStation)));
@@ -262,6 +271,7 @@ console.log(`Macro pad:  http://localhost:${server.port}/   (editor: /edit)`);
 process.on("exit", () => {
   radio.stop();
   viz.stop();
+  mic.stop();
   recorder.cancel();
 });
 for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => process.exit(0));

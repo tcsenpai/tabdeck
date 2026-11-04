@@ -133,6 +133,7 @@ export interface PadConfig {
   bar: InfoKind[]; // system chips in the pad's bottom bar (see lib/info.ts), in order
   radioFavs: RadioFav[]; // stations picked from radio-browser.info; tiles/widget address them as `rb:<uuid>`
   glow: boolean; // ambient glow behind the pad that follows the system audio (each tablet switches it on)
+  micCorners: boolean; // the pad's corners flash with the Mac's microphone noise (each tablet switches it on)
   pages: Page[];
 }
 
@@ -444,7 +445,8 @@ export function validateConfig(raw: unknown): PadConfig {
     if (!bar.includes(k)) bar.push(k);
   }
   if (root.glow !== undefined && typeof root.glow !== "boolean") throw new ConfigError("glow: expected true/false");
-  return { version: 2, profiles, auto, bar, radioFavs, glow: root.glow === true, pages };
+  if (root.micCorners !== undefined && typeof root.micCorners !== "boolean") throw new ConfigError("micCorners: expected true/false");
+  return { version: 2, profiles, auto, bar, radioFavs, glow: root.glow === true, micCorners: root.micCorners === true, pages };
 }
 
 // Value of a fader: integer 0–100.
@@ -485,11 +487,12 @@ export interface PublicPage extends Omit<Page, "buttons"> {
 }
 
 // What the tablet sees: presentation only, never the commands (steps, hold, led, fader).
-export function publicView(cfg: PadConfig): { profiles: Profile[]; auto: boolean; bar: InfoKind[]; radioFavs: RadioFav[]; glow: boolean; pages: PublicPage[] } {
+export function publicView(cfg: PadConfig): { profiles: Profile[]; auto: boolean; bar: InfoKind[]; radioFavs: RadioFav[]; glow: boolean; micCorners: boolean; pages: PublicPage[] } {
   return {
     profiles: cfg.profiles,
     bar: cfg.bar,
     glow: cfg.glow,
+    micCorners: cfg.micCorners,
     radioFavs: cfg.radioFavs,
     auto: cfg.auto.enabled && cfg.auto.rules.length > 0, // the tablet only needs to know whether to follow
     pages: cfg.pages.map((p) => ({
@@ -534,6 +537,7 @@ export function seedConfig(): PadConfig {
     auto: { enabled: false, rules: [] },
     bar: [],
     glow: false,
+    micCorners: false,
     radioFavs: [],
     pages: [
       {

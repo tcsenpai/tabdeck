@@ -4,6 +4,7 @@ import { mountRadio, mountStation, resetTiles, setFavs, syncRadio } from "/asset
 import { mountViz, resetViz } from "/assets/viz.js";
 import { setBar } from "/assets/bar.js";
 import { setGlow } from "/assets/glow.js";
+import { setCorners } from "/assets/corners.js";
 import en from "/assets/locale-pad-en.js";
 import it from "/assets/locale-pad-it.js";
 
@@ -317,14 +318,43 @@ $("auto").addEventListener("click", () => {
 
 // Ambient glow: offered when the config allows it, switched on per tablet (it costs battery and CPU).
 const glowOn = () => !!state.cfg?.glow && localStorage.getItem("pad.glow") === "on";
+// Mic corners: only the corners react to noise, like a mechanical keyboard's lights. Instead of the glow, not
+// with it. The tap cycles off → this tablet's microphone → the Mac's microphone → off.
+const micMode = () => {
+  const m = localStorage.getItem("pad.mic");
+  return state.cfg?.micCorners && !glowOn() && (m === "tablet" || m === "mac") ? m : "";
+};
 function paintGlow() {
   $("glow").hidden = !state.cfg?.glow;
   $("glow").classList.toggle("on", glowOn());
   setGlow(glowOn());
+  $("mic").hidden = !state.cfg?.micCorners;
+  $("mic").classList.toggle("on", !!micMode());
+  $("mic").dataset.src = micMode();
+  setCorners(micMode(), (code) => {
+    localStorage.removeItem("pad.mic");
+    paintGlow();
+    toast(t(code === "no-mic-api" ? "pad.mic.insecure" : "pad.mic.denied"), true);
+  });
 }
 $("glow").addEventListener("click", () => {
   if (glowOn()) localStorage.removeItem("pad.glow");
-  else localStorage.setItem("pad.glow", "on");
+  else {
+    localStorage.setItem("pad.glow", "on");
+    localStorage.removeItem("pad.mic");
+  }
+  paintGlow();
+});
+$("mic").addEventListener("click", () => {
+  const cur = micMode();
+  let nextMode = { "": "tablet", tablet: "mac", mac: "" }[cur];
+  if (nextMode === "tablet" && !navigator.mediaDevices?.getUserMedia) {
+    nextMode = "mac"; // insecure origin: the browser hides the microphone, so go straight to the Mac's
+    toast(t("pad.mic.insecure"));
+  }
+  if (nextMode) localStorage.setItem("pad.mic", nextMode);
+  else localStorage.removeItem("pad.mic");
+  if (nextMode) localStorage.removeItem("pad.glow");
   paintGlow();
 });
 

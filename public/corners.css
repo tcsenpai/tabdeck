@@ -1,0 +1,28 @@
+/* Mic corners (public/corners.js): four soft lights in the screen corners, opacity/transform only. */
+.corners {
+  position: fixed;
+  inset: 0;
+  z-index: 0; /* above the neon floor, under the pad, like the ambient glow */
+  pointer-events: none;
+  contain: strict;
+  overflow: hidden;
+}
+.cn {
+  position: absolute;
+  width: 46vmin;
+  height: 46vmin;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.cn-0 { left: 0; top: 0; transform-origin: 0 0; background: radial-gradient(circle at 0 0, color-mix(in srgb, var(--cn) 90%, transparent), transparent 68%); }
+.cn-1 { right: 0; top: 0; transform-origin: 100% 0; background: radial-gradient(circle at 100% 0, color-mix(in srgb, var(--cn) 90%, transparent), transparent 68%); }
+.cn-2 { right: 0; bottom: 0; transform-origin: 100% 100%; background: radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--cn) 90%, transparent), transparent 68%); }
+.cn-3 { left: 0; bottom: 0; transform-origin: 0 100%; background: radial-gradient(circle at 0 100%, color-mix(in srgb, var(--cn) 90%, transparent), transparent 68%); }
+
+/* Which microphone the ◩ button is using: a tiny badge. */
+#mic { position: relative; }
+#mic[data-src="tablet"]::after, #mic[data-src="mac"]::after {
+  position: absolute; right: 3px; bottom: 1px; font: 700 9px var(--mono); color: var(--ok);
+}
+#mic[data-src="tablet"]::after { content: "T"; }
+#mic[data-src="mac"]::after { content: "M"; }

@@ -281,3 +281,16 @@ describe("per-app key variants", () => {
     expect(JSON.stringify(view)).not.toMatch(/Secret|private\.example|hidden-cmd/);
   });
 });
+
+describe("mic corners flag", () => {
+  const withMic = (v: unknown) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { micCorners: unknown }).micCorners = v;
+    return () => validateConfig(c);
+  };
+  test("off by default, boolean only, visible to the tablet", () => {
+    expect(validateConfig(seedConfig()).micCorners).toBe(false);
+    expect(publicView(withMic(true)()).micCorners).toBe(true);
+    for (const bad of ["yes", 1, null]) expect(withMic(bad)).toThrow(ConfigError);
+  });
+});

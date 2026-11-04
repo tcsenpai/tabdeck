@@ -33,5 +33,9 @@ export function glowSection({ cfg, touch }) {
       h("input", { type: "checkbox", checked: cfg.glow, onchange: (e) => { cfg.glow = e.target.checked; touch(); } }),
       t("edit.glow.enable")),
     h("p", { class: "hint" }, t("edit.glow.hint")),
+    h("label", { class: "check" },
+      h("input", { type: "checkbox", checked: cfg.micCorners, onchange: (e) => { cfg.micCorners = e.target.checked; touch(); } }),
+      t("edit.mic.enable")),
+    h("p", { class: "hint" }, t("edit.mic.hint")),
   );
 }

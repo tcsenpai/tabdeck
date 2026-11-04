@@ -227,6 +227,8 @@ export default {
   "edit.var.down": "Dopo",
   "edit.var.remove": "Rimuovi variante",
   "edit.var.full": "Al massimo {max} varianti per tasto.",
+  "edit.mic.enable": "Offri gli angoli a microfono",
+  "edit.mic.hint": "Si accendono solo i quattro angoli con il rumore che sente il microfono del Mac, come le luci di una tastiera meccanica: ogni click di tasto o tocco accende l'angolo successivo. Ogni tablet sceglie la sorgente col pulsante ◩ nella barra (al posto dell'alone): il proprio microfono, analizzato sul tablet (non viene inviato nulla; il browser lo offre solo su https o localhost, o dopo aver consentito l'indirizzo del pad in chrome://flags/#unsafely-treat-insecure-origin-as-secure), oppure il microfono del Mac, analizzato sul Mac, che invia solo due numeri per frame. Nessun audio viene salvato. Per quello del Mac, macOS chiede una volta di consentire il Microfono al processo che esegue il server; ascolta solo finché un tablet l'ha acceso.",
   "edit.rb.title": "Radio preferite",
   "edit.rb.hint": "Cerca stazioni radio su internet e tieni le preferite: entrano nei ‹ › del widget radio e nell'elenco dei tasti stazione.",
   "edit.rb.q": "Nome della stazione",

@@ -225,6 +225,19 @@ di sistema**; l'helper gira solo finché un tablet ha l'alone acceso. È fatto d
 statici di cui si animano opacità e scala ogni frame (nessun filtro blur) e dorme quando il
 Mac è in silenzio.
 
+### Angoli a microfono
+
+Solo i quattro angoli del pad reagiscono al rumore, come le luci di una tastiera meccanica: ogni
+click di tasto, tocco o battito di mani accende l'angolo successivo, e il livello aggiunge un
+bagliore leggero. Attiva «Offri gli angoli a microfono» nell'editor; ogni tablet alterna col
+pulsante **◩** della barra: spento, **microfono del tablet** (analizzato nel browser, non viene
+inviato nulla; il browser lo offre solo su https o localhost, altrimenti consenti l'indirizzo del
+pad in `chrome://flags/#unsafely-treat-insecure-origin-as-secure`), oppure **microfono del Mac**
+(`tools/mic.swift`, compilato al primo uso, analizzato sul Mac; il server invia due numeri per
+frame, mai audio, e ascolta solo finché un tablet l'ha acceso; macOS chiede una volta il permesso
+**Microfono**). Su quel tablet sostituisce l'alone ambientale. `MIC_HELPER="comando"` sostituisce
+l'helper (per esempio `tools/mic --test-script`).
+
 ### Barra info
 
 Fino a sei piccoli indicatori nella barra in basso del pad (CPU, RAM, batteria, disco, volume,
@@ -261,6 +274,7 @@ Il pad ha manifest e icone. Chrome propone una vera installazione solo in un con
 | Pagine automatiche (titoli finestra, URL dei browser) | Automazione: System Events e ogni browser (chiesto una volta) |
 | Visualizzatore, alone ambientale | Registrazione audio di sistema |
 | Registrazione macro | Monitoraggio input |
+| Angoli a microfono, microfono del Mac | Microfono (quello del tablet non richiede nulla sul Mac) |
 | Barra info, radio preferite, profili | nessuno |
 
 ## Modello di sicurezza
@@ -311,14 +325,17 @@ lib/stations.ts    lista chiusa degli stream radio
 lib/viz.ts         avvia l'helper audio e distribuisce gli spettri (SSE)
 lib/context.ts     app/finestra/URL in primo piano e regole delle pagine automatiche
 lib/info.ts        letture della barra info (CPU, RAM, batteria, ...)
+lib/mic.ts         livello/click del microfono del Mac per gli angoli
 lib/recorder.ts    registratore di macro: avvia l'helper, trasforma gli eventi in passi
 lib/radiobrowser.ts  client di radio-browser.info (ricerca, risoluzione, controlli URL)
 tools/sysaudio.swift  cattura dell'audio di sistema + FFT
 tools/recorder.swift  registratore di tasti e clic (sola lettura)
+tools/mic.swift    livello del microfono + rilevatore di click (solo numeri)
 docs/radio-browser-notes.md  cosa si è scoperto sull'API dell'elenco
 public/pad.*       pad per il tablet
 public/edit.*      editor (edit-auto/-bar/-radio/-record.js: i suoi pannelli)
 public/bar.js      indicatori info sul pad
+public/corners.js  angoli a microfono (sorgente tablet o Mac)
 public/deco.js     tile decorativi (markup); deco.css gli stili
 public/edit-variants.js  pannello delle varianti per app
 public/templates.js  pagine di partenza per le pagine automatiche
