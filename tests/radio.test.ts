@@ -2,13 +2,13 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { ConfigError } from "../lib/config.ts";
 import { createRadio, radioCommand, type Radio, type RadioOptions } from "../lib/radio.ts";
-import { isStation, stationUrl } from "../lib/stations.ts";
+import { favId, favUuid, isStation, stationUrl } from "../lib/stations.ts";
 
 // These tests run real child processes (a fake player that sleeps), so they wait for a *condition*
 // (polling `until`) instead of a guessed duration. Fake timers cannot observe an OS process.
 const SLEEPER = ["/bin/sh", "-c", "exec sleep 30", "sh"]; // the stream URL arrives as an ignored extra argument
 const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch { return false; } };
-const pidOf = (dir: string) => Number(readFileSync(`${dir}/radio.pid`, "utf8"));
+const pidOf = (dir: string) => Number(readFileSync(`${dir}/radio.pid`, "utf8").split("\n")[0]); // line 1: pid, line 2: stream URL
 async function until(cond: () => boolean, what: string, ms = 3000) {
   const t0 = Date.now();
   while (!cond()) {
@@ -126,5 +126,54 @@ describe("station tiles", () => {
     r.tune("virgin");
     expect(r.get()).toMatchObject({ station: "virgin", output: "tablet", status: "idle" });
     expect(() => pidOf(dir)).toThrow();
+  });
+});
+
+describe("radio-browser favourites", () => {
+  const UUID = "960cf833-0601-11e8-ae97-52543be04c81";
+  const FAV = favId(UUID);
+  const urlOf = (dir: string) => readFileSync(`${dir}/radio.pid`, "utf8").split("\n")[1];
+
+  test("favourite ids are well formed or rejected; the server decides which are saved", () => {
+    expect(favUuid(FAV)).toBe(UUID);
+    for (const bad of ["rb:", "rb:../../etc", `rb:${UUID.toUpperCase()}`, `rb:${UUID} `, UUID, "rb:virgin", 7, null]) expect(favUuid(bad)).toBeNull();
+    expect(radioCommand({ tune: FAV })).toEqual({ tune: FAV });
+    expect(() => radioCommand({ tune: "rb:nope" })).toThrow(ConfigError);
+    // a stricter predicate (the saved favourites) turns a well-formed id into an unknown station
+    expect(() => radioCommand({ station: FAV }, isStation)).toThrow(ConfigError);
+  });
+  test("a favourite is resolved when played and the URL it gets is what the player opens", async () => {
+    const dir = tmp();
+    const asked: string[] = [];
+    const r = make(dir, { resolve: async (u) => (asked.push(u), "https://radio.example/stream.mp3") });
+    r.tune(FAV);
+    expect(r.get()).toMatchObject({ station: FAV, status: "loading" });
+    await until(() => { try { return urlOf(dir) === "https://radio.example/stream.mp3"; } catch { return false; } }, "player to start");
+    expect(asked).toEqual([UUID]);
+    r.tune(FAV); // second tap stops
+    expect(r.get().status).toBe("idle");
+  });
+  test("a directory failure becomes a visible error, and a stop while resolving never starts a player", async () => {
+    const failing = make(tmp(), { resolve: () => Promise.reject(new Error("Radio directory is unreachable")) });
+    failing.tune(FAV);
+    await until(() => failing.get().status === "error", "error status");
+    expect(failing.get().error).toBe("Radio directory is unreachable");
+
+    const dir = tmp();
+    let release: (u: string) => void = () => {};
+    const slow = make(dir, { resolve: () => new Promise<string>((ok) => { release = ok; }) });
+    slow.tune(FAV);
+    slow.stop();
+    release("https://radio.example/late.mp3");
+    for (let i = 0; i < 10; i++) await Promise.resolve(); // let the late answer's callbacks run
+    expect(() => readFileSync(`${dir}/radio.pid`, "utf8")).toThrow();
+  });
+  test("an orphaned favourite player is recognised by its stream URL and stopped", async () => {
+    const dir = tmp();
+    const url = "https://radio.example/orphan.mp3";
+    const orphan = Bun.spawn(["/bin/sh", "-c", "exec sleep 30", url], { detached: true });
+    await Bun.write(`${dir}/radio.pid`, `${orphan.pid}\n${url}`);
+    make(dir);
+    await until(() => !alive(orphan.pid), "orphan to be stopped");
   });
 });

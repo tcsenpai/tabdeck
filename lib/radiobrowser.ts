@@ -4,6 +4,9 @@
 // public http(s) URL (see safeUrl). Request URLs are built from a fixed mirror list and a validated
 // uuid / bounded query only. Docs, rules and real samples: docs/radio-browser-notes.md.
 import { ConfigError } from "./config.ts";
+import { isRbUuid } from "./stations.ts";
+
+export { isRbUuid }; // canonical lowercase uuid check (lib/stations.ts)
 
 export interface RbStation {
   uuid: string;
@@ -41,12 +44,7 @@ const MAX_STREAM_URL = 1024; // real signed HLS urls reach ~660 characters
 const MAX_ICON_URL = 300;
 const UNREACHABLE = "Radio directory is unreachable";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-// Canonical lowercase form only: the value ends up in a request path.
-export function isRbUuid(v: unknown): v is string {
-  return typeof v === "string" && UUID_RE.test(v);
-}
+// (isRbUuid: the uuid ends up in a request path, so only the canonical lowercase form is accepted.)
 
 // Whitespace and control characters become a single space; angle brackets, bidi overrides, BOM and
 // lone surrogates disappear. Cut by code points so an emoji is never split.

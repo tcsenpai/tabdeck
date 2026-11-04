@@ -171,6 +171,67 @@ server; se non si sente nulla il tile scrive «NESSUN AUDIO (o consenti la Regis
 sistema)», perché silenzio e permesso negato sono indistinguibili. `VIZ_HELPER="comando"`
 sostituisce l'helper (per esempio `tools/sysaudio --test-tone` per un segnale dimostrativo).
 
+### Radio preferite (radio-browser.info)
+
+Dall'editor (niente selezionato → «Radio preferite») cerchi nell'elenco della comunità
+[radio-browser.info](https://www.radio-browser.info) e metti la stella alle stazioni che ti
+piacciono: entrano nei ‹ › del widget e nell'elenco del tile stazione. Si salvano solo id e nome;
+l'URL dello stream si chiede all'elenco a ogni ascolto (conta anche il «clic» che l'elenco
+chiede), si controlla che sia un normale URL `http(s)` pubblico e lo usa il riproduttore del Mac
+o l'`<audio>` del tablet. L'elenco lo gestisce una persona sola, senza garanzie: una stazione può
+sparire e gli stream HLS (`.m3u8`) potrebbero non partire nel browser del tablet (sul Mac sì).
+Fino a 24.
+
+### Pagine automatiche
+
+Il pad può seguire l'app in primo piano sul Mac. Nell'editor (niente selezionato → «Pagine
+automatiche») aggiungi regole: nome app o bundle id (esatto o «contiene»), eventualmente
+ristretto da URL del browser o titolo finestra, e la pagina da mostrare; vince la prima che
+corrisponde. «Rileva l'app in primo piano» compila una regola per te, 23 app note sono a un clic
+e per 9 di esse ★ crea una pagina di partenza con le scorciatoie predefinite. Il pad si sposta
+solo quando la pagina corrispondente *cambia*: un tocco manuale resta finché non cambi app; il
+pulsante **⇆** della barra la sospende su quel tablet. Il confronto avviene sul Mac: al tablet
+arriva solo l'id della pagina. Alla prima lettura macOS chiede una volta di far controllare
+System Events al server (titoli delle finestre) e, per le regole sugli URL, ogni browser.
+
+### Barra info
+
+Fino a sei piccoli indicatori nella barra in basso del pad (CPU, RAM, batteria, disco, volume,
+tempo acceso, carico medio, orologio), scelti nell'editor. Solo strumenti standard di macOS
+(nessun permesso), in cache 2 s sul server e interrogati ogni 5 s dal tablet finché la scheda è
+visibile; oltre la soglia l'indicatore diventa rosso. Nascosti sugli schermi stretti.
+
+### Registrazione di macro
+
+Ogni elenco di azioni ha un pulsante **● Registra**. Fai scorciatoie e clic sul Mac, premi
+Ferma, e vengono aggiunti come passi `keys`, `text`, `click` e `delay`. Ascolta un event tap di
+sola lettura (`tools/recorder.swift`, compilato al primo uso), per al massimo 120 s e solo
+mentre registri; **macOS chiede il «Monitoraggio input»** per il processo che esegue il server.
+Tutto ciò che digiti nel frattempo viene registrato, password comprese. Le coordinate dei clic
+sono posizioni sullo schermo. `RECORDER_HELPER="comando"` sostituisce l'helper (per esempio
+`tools/recorder --test-script`, che non tocca la tastiera).
+
+### Profili per tablet
+
+Con più tablet, «Visibile su» nelle impostazioni della pagina la limita a un solo tablet. Apri
+il pad una volta come `/?profile=<id>` (gli id li crea «+ Tablet» nell'editor); il tablet se lo
+ricorda. `/?profile=` lo cancella.
+
+### Installazione come app (PWA)
+
+Il pad ha manifest e icone. Chrome propone una vera installazione solo in un contesto sicuro
+(https o localhost); su `http://IP-LAN` usa invece «Apri come finestra» di ChromeOS.
+
+### Permessi in breve
+
+| Funzione | Permesso macOS |
+| --- | --- |
+| `keys`, `text`, azioni Mac con System Events | Accessibilità |
+| Pagine automatiche (titoli finestra, URL dei browser) | Automazione: System Events e ogni browser (chiesto una volta) |
+| Visualizzatore | Registrazione audio di sistema |
+| Registrazione macro | Monitoraggio input |
+| Barra info, radio preferite, profili | nessuno |
+
 ## Modello di sicurezza
 
 Il server ascolta sulla LAN, e un pulsante può eseguire comandi sul Mac. Quindi:
@@ -178,10 +239,15 @@ Il server ascolta sulla LAN, e un pulsante può eseguire comandi sul Mac. Quindi
 - Il tablet può **solo premere pulsanti già definiti**: `GET /api/pad` non contiene mai i
   comandi, `POST /api/run/<id>` esegue solo ciò che sta in `data/pad.json`.
 - `POST /api/radio` (il widget radio) è aperto al pad come le rotte di pressione, ma accetta
-  solo una stazione da una lista fissa di 12 nomi e un'uscita (`mac`/`tablet`): non può far
-  aprire al server un URL qualsiasi né eseguire altro.
+  solo una stazione da una lista fissa di 12 nomi (più le tue preferite salvate) e un'uscita (`mac`/`tablet`): non può far
+  aprire al server un URL qualsiasi né eseguire altro. Una preferita di radio-browser.info è
+  accettata solo se è salvata nel tuo `pad.json`; l'URL dello stream viene dall'elenco e deve
+  superare un controllo sintattico di URL pubblico (un nome che punta a un indirizzo della LAN
+  passa lo stesso: tieni il pad su una rete fidata). `GET /api/info` non ha parametri: gli
+  indicatori vengono dalla tua configurazione.
 - **Editor, salvataggio, prova e catalogo azioni** (`/edit`, `/api/config`, `/api/test`,
-  `/api/actions`, `/api/macscript`) rispondono solo se la connessione parte dal Mac stesso
+  `/api/actions`, `/api/macscript`, `/api/presets`, `/api/context`, `/api/record*`,
+  `/api/radio/search`) rispondono solo se la connessione parte dal Mac stesso
   (loopback o uno dei suoi IP) **e** l'header `Host` è `localhost` o un IP del Mac (blocca il
   DNS rebinding). Dal Duet o da un altro dispositivo: 403.
 - Le richieste POST/PUT con `Origin` di un altro sito sono rifiutate (CSRF).
@@ -212,9 +278,17 @@ lib/state.ts       stato dei LED
 lib/radio.ts       riproduttore radio sul Mac (mpv/ffplay), lista chiusa di stazioni
 lib/stations.ts    lista chiusa degli stream radio
 lib/viz.ts         avvia l'helper audio e distribuisce gli spettri (SSE)
+lib/context.ts     app/finestra/URL in primo piano e regole delle pagine automatiche
+lib/info.ts        letture della barra info (CPU, RAM, batteria, ...)
+lib/recorder.ts    registratore di macro: avvia l'helper, trasforma gli eventi in passi
+lib/radiobrowser.ts  client di radio-browser.info (ricerca, risoluzione, controlli URL)
 tools/sysaudio.swift  cattura dell'audio di sistema + FFT
+tools/recorder.swift  registratore di tasti e clic (sola lettura)
+docs/radio-browser-notes.md  cosa si è scoperto sull'API dell'elenco
 public/pad.*       pad per il tablet
-public/edit.*      editor
+public/edit.*      editor (edit-auto/-bar/-radio/-record.js: i suoi pannelli)
+public/bar.js      indicatori info sul pad
+public/templates.js  pagine di partenza per le pagine automatiche
 public/common.js   DOM helper + tile condiviso pad/editor
 public/i18n.js     traduzioni (en/it)
 tests/             bun test

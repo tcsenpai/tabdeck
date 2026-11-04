@@ -8,6 +8,8 @@ import { APP_PRESETS, createContext, matchRule } from "./lib/context.ts";
 import { createInfo } from "./lib/info.ts";
 import { createRecorder } from "./lib/recorder.ts";
 import { createRadio, radioCommand } from "./lib/radio.ts";
+import { favId, isStation } from "./lib/stations.ts";
+import { resolveStream, searchStations } from "./lib/radiobrowser.ts";
 import { createViz, sseResponse } from "./lib/viz.ts";
 import { editorAllowed, sameOriginOk } from "./lib/guard.ts";
 import { runSteps } from "./lib/run.ts";
@@ -23,6 +25,17 @@ const store = createStore(`${DATA_DIR}/pad.json`);
 const state = createState(() => store.config, () => store.rev, `${DATA_DIR}/toggles.json`);
 const radio = createRadio(DATA_DIR);
 const hasRadio = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "radio" || b.kind === "station"));
+// A station the radio may play: the built-in whitelist or one of the favourites saved in pad.json.
+const knownStation = (id: string) => isStation(id) || store.config.radioFavs.some((f) => favId(f.uuid) === id);
+// The directory is a third party: its failures are a bad gateway, not an internal error.
+const fromDirectory = async <T>(p: Promise<T>): Promise<T | Response> => {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof ConfigError) throw e;
+    return json({ error: e instanceof Error ? e.message : "Radio directory is unreachable" }, 502);
+  }
+};
 // System-audio visualizer: the helper only runs while a browser is watching. VIZ_HELPER="cmd args"
 // replaces it (tests / `tools/sysaudio --test-tone`).
 const viz = createViz({ dir: DATA_DIR, helper: process.env.VIZ_HELPER?.trim() ? process.env.VIZ_HELPER.trim().split(/\s+/) : undefined });
@@ -97,7 +110,7 @@ const server = Bun.serve({
         return new Response(f, { headers: { ...noCache, "Content-Type": "application/manifest+json" } });
       }
 
-      if (path === "/edit" || path === "/api/actions" || path === "/api/macscript" || path === "/api/presets" || path === "/api/context" || path.startsWith("/api/record") || path.startsWith("/api/config") || path === "/api/test") {
+      if (path === "/edit" || path === "/api/actions" || path === "/api/macscript" || path === "/api/presets" || path === "/api/context" || path === "/api/radio/search" || path.startsWith("/api/record") || path.startsWith("/api/config") || path === "/api/test") {
         if (!editorAllowed(host, srv.requestIP(req)?.address, localIps())) {
           return path === "/edit"
             ? new Response(FORBIDDEN_HTML, { status: 403, headers: { "Content-Type": "text/html; charset=utf-8" } })
@@ -108,11 +121,20 @@ const server = Bun.serve({
         if (method === "PUT" && path === "/api/config") {
           const cfg = store.save(await readJson(req));
           if (!hasRadio()) radio.stop(); // the widget was removed: stop the Mac player too
+          // A favourite that is gone must not stay selected (or keep playing).
+          if (!knownStation(radio.get().station)) { radio.stop(); radio.setStation("nightride"); }
           return json({ rev: store.rev, config: cfg });
         }
         if (method === "GET" && path === "/api/actions") return json(catalog());
         if (method === "GET" && path === "/api/presets") return json(APP_PRESETS);
         if (method === "GET" && path === "/api/context") return json(await frontmost.get());
+        if (method === "GET" && path === "/api/radio/search") {
+          const found = await fromDirectory(searchStations(url.searchParams.get("q") ?? "", {
+            tag: url.searchParams.get("tag") ?? undefined,
+            country: url.searchParams.get("country") ?? undefined,
+          }));
+          return found instanceof Response ? found : json(found);
+        }
         if (method === "GET" && path === "/api/record") return json(recorder.status());
         if (method === "POST" && path === "/api/record/start") { recorder.start(); return json(recorder.status()); }
         if (method === "POST" && path === "/api/record/stop") return json({ steps: recorder.stop() });
@@ -157,7 +179,14 @@ const server = Bun.serve({
       }
       if (method === "POST" && path === "/api/radio") {
         if (!hasRadio()) return json({ error: "No radio on this pad" }, 404);
-        return json(radio.apply(radioCommand(await readJson(req))));
+        return json(radio.apply(radioCommand(await readJson(req), knownStation)));
+      }
+      // The tablet plays a favourite itself: this gives it the current stream URL (counts a click on the directory).
+      if (method === "GET" && path === "/api/radio/stream") {
+        const id = url.searchParams.get("id") ?? "";
+        if (!hasRadio() || !id.startsWith("rb:") || !knownStation(id)) return json({ error: "Unknown station" }, 404);
+        const stream = await fromDirectory(resolveStream(id.slice(3)));
+        return stream instanceof Response ? stream : json({ url: stream });
       }
 
       const act = path.match(/^\/api\/(run|hold|fader)\/([a-z0-9_-]{1,40})$/);

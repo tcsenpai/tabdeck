@@ -20,3 +20,16 @@ export const STATIONS: Station[] = [
 export const STATION_IDS: string[] = STATIONS.map((s) => s.id);
 export const isStation = (id: unknown): id is string => typeof id === "string" && STATION_IDS.includes(id);
 export const stationUrl = (id: string): string => STATIONS.find((s) => s.id === id)?.url ?? STATIONS[0].url;
+
+// Stations picked from the radio-browser.info directory ("favourites") are identified as `rb:<uuid>`.
+// Which ones exist is decided by the saved config (PadConfig.radioFavs); their stream URL is resolved
+// on every play (lib/radiobrowser.ts), never stored.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const isRbUuid = (v: unknown): v is string => typeof v === "string" && UUID_RE.test(v);
+export const favId = (uuid: string): string => `rb:${uuid}`;
+// The uuid of a favourite id, or null when `id` is not one (format only).
+export const favUuid = (id: unknown): string | null => {
+  if (typeof id !== "string" || !id.startsWith("rb:")) return null;
+  const u = id.slice(3);
+  return isRbUuid(u) ? u : null;
+};

@@ -17,6 +17,11 @@ All notable changes. Newest first. The project is early and has no tagged releas
   `tools/recorder.swift`) to your keys and clicks and the editor appends them as `keys`, `text`,
   `click` and `delay` steps. Needs the macOS Input Monitoring permission for the app that runs the
   server; the server never records anything the editor did not start (120 s limit, editor only).
+- **Radio favourites:** search radio-browser.info from the editor and star stations; they join the
+  widget's ‹ › and the station tile's list (up to 24). Only id and name are saved; the stream URL is
+  resolved on every play and must pass a public-http(s) check. `/api/radio/search` is editor-only;
+  `/api/radio/stream` (for the tablet's `<audio>`) and `POST /api/radio` accept only saved favourites.
+  A Mac player orphaned by a killed server is now recognised by its stream URL (pid file line 2).
 - **Tablet profiles:** pages can be shown on one tablet only (`?profile=<id>`, remembered per tablet).
 - **PWA manifest and icons.** Chrome offers a real install only in a secure context (https or
   localhost); on a plain `http://LAN-IP` address use ChromeOS "Open as window".

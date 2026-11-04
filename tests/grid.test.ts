@@ -182,3 +182,30 @@ describe("info bar", () => {
     expect(withBar("cpu")).toThrow(ConfigError);
   });
 });
+
+describe("radio favourites", () => {
+  const UUID = "960cf833-0601-11e8-ae97-52543be04c81";
+  const base = (favs: unknown, station?: string) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { radioFavs: unknown }).radioFavs = favs;
+    if (station) c.pages[0].buttons[0] = { ...c.pages[0].buttons[0], kind: "station", station, steps: [], hold: [], w: SUB, h: SUB };
+    return () => validateConfig(c);
+  };
+  test("kept as id + name, duplicates dropped, the tablet sees them", () => {
+    const c = base([{ uuid: UUID, name: "Groove" }, { uuid: UUID, name: "Again" }])();
+    expect(c.radioFavs).toEqual([{ uuid: UUID, name: "Groove" }]);
+    expect(publicView(c).radioFavs).toEqual(c.radioFavs);
+    expect(validateConfig(seedConfig()).radioFavs).toEqual([]);
+  });
+  test("ids must be canonical uuids and names present; at most 24", () => {
+    for (const bad of [{ uuid: "../x", name: "a" }, { uuid: UUID.toUpperCase(), name: "a" }, { uuid: UUID, name: "" }, { uuid: UUID }, "x"]) {
+      expect(base([bad])).toThrow(ConfigError);
+    }
+    const many = Array.from({ length: 25 }, (_, i) => ({ uuid: `960cf833-0601-11e8-ae97-5254${String(i).padStart(8, "0")}`, name: `s${i}` }));
+    expect(base(many)).toThrow(ConfigError);
+  });
+  test("a station tile may point at a saved favourite, and only at a saved one", () => {
+    expect(base([{ uuid: UUID, name: "Groove" }], `rb:${UUID}`)().pages[0].buttons[0].station).toBe(`rb:${UUID}`);
+    expect(base([], `rb:${UUID}`)).toThrow(ConfigError);
+  });
+});

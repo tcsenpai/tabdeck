@@ -137,6 +137,39 @@ Terminal), because launchd starts the process.
   process that runs the server; when nothing is heard the tile says "NO AUDIO (or allow System
   Audio Recording)" because silence and a denied permission look the same. `VIZ_HELPER="cmd args"`
   replaces the helper (e.g. `tools/sysaudio --test-tone` for a demo signal).
+- **Radio favourites:** search the community directory [radio-browser.info](https://www.radio-browser.info)
+  from the editor (nothing selected → "Radio favourites") and star the stations you like. They
+  join the widget's ‹ › and the station tile's list. Only the id and name are saved; the stream
+  URL is asked from the directory on every play (it also counts the click the directory asks
+  for), checked to be a plain public `http(s)` URL, and used by the Mac player or the tablet's
+  `<audio>`. The directory is run by one person with no guarantees: a station may be gone, and
+  HLS (`.m3u8`) streams may not play in the tablet's browser (they do on the Mac). Up to 24.
+- **Automatic pages:** the pad can follow the app in front on the Mac. In the editor (nothing
+  selected → "Automatic pages") add rules: an app name or bundle id (exact or "contains"),
+  optionally narrowed by a browser URL or window title, and the page to show; the first match
+  wins. "Detect the app in front" fills a rule for you, 23 known apps are one click away, and
+  for 9 of them ★ builds a starter page of default shortcuts. The pad moves only when the matched
+  page *changes*, so a manual tap sticks until you switch app; the **⇆** bar button pauses it on
+  one tablet. Matching is done on the Mac: the tablet only ever receives a page id. The first
+  lookup makes macOS ask once to let the server control System Events (window titles) and, for
+  URL rules, each browser.
+- **Info bar:** up to six small chips in the pad's bottom bar (CPU, RAM, battery, disk, volume,
+  uptime, load average, clock), chosen in the editor. Stock macOS tools only (no permission),
+  cached 2 s on the server and polled every 5 s by the tablet while its tab is visible; a value
+  over its threshold turns red. Hidden on narrow screens.
+- **Macro recording:** every step list has a **● Record** button. Do the shortcuts and clicks on
+  the Mac, press Stop, and they are appended as `keys`, `text`, `click` and `delay` steps. A
+  listen-only event tap (`tools/recorder.swift`, compiled on first use) does the listening, for
+  at most 120 s and only while you recorded; **macOS asks for "Input Monitoring"** for the
+  process that runs the server. Everything you type meanwhile is recorded, passwords included.
+  Click coordinates are screen positions. `RECORDER_HELPER="cmd args"` replaces the helper
+  (e.g. `tools/recorder --test-script`, which never touches the keyboard).
+- **Tablet profiles:** with several tablets, "Shown on" in the page settings limits a page to
+  one tablet. Open the pad once as `/?profile=<id>` (the editor's "+ Tablet" creates the ids);
+  the tablet remembers it. `/?profile=` clears it.
+- **Install as an app (PWA):** the pad has a manifest and icons. Chrome offers a real install only
+  in a secure context (https or localhost); over plain `http://<LAN-IP>` use ChromeOS's
+  "Open as window" shortcut instead.
 - **Mac actions catalog:** typed templates that generate AppleScript (see below).
 - **`when` guard** and **`continueOnError`** (see below).
 - **Language:** English or Italian (see below).
@@ -185,6 +218,16 @@ Events and so need the Accessibility permission.
 - **`$PAD_BUTTON`**: the button id, available to the same steps. **`$PAD_VALUE`**: the fader
   value, for faders.
 
+### Permissions at a glance
+
+| Feature | macOS permission |
+| --- | --- |
+| `keys`, `text`, Mac actions with System Events | Accessibility (below) |
+| Automatic pages (window titles, browser URLs) | Automation: System Events, each browser (asked once) |
+| Visualizer | System Audio Recording |
+| Macro recording | Input Monitoring |
+| Info bar, radio favourites, profiles | none |
+
 ### Accessibility permission
 
 Needed for `keys`, `text` and the Mac actions that use System Events: System Settings →
@@ -204,15 +247,20 @@ The server listens on the LAN and a button can run commands on your Mac. So:
 - The tablet can **only press buttons that already exist**: `GET /api/pad` never contains
   the commands, and `POST /api/run/<id>` only runs what is in `data/pad.json`.
 - **Editor, save, test and action-catalog endpoints** (`/edit`, `/api/config`, `/api/test`,
-  `/api/actions`, `/api/macscript`) answer only when the connection comes from the Mac
+  `/api/actions`, `/api/macscript`, `/api/presets`, `/api/context`, `/api/record*`,
+  `/api/radio/search`) answer only when the connection comes from the Mac
   itself (loopback or one of its own LAN IPs) **and** the `Host` header is `localhost` or
   one of the Mac's IPs (blocks DNS rebinding). From the tablet or any other device: 403.
 - POST/PUT requests with an `Origin` from another site are rejected (CSRF).
 - **The pad has no authentication**: anyone on your LAN can press the buttons. Use
   *confirm* for dangerous buttons, and put a firewall in front if the network is untrusted.
 - `POST /api/radio` (the radio widget) is open to the pad like the press endpoints, but it
-  only accepts a station from a fixed list of 12 names and an output (`mac`/`tablet`): it can
-  never make the server open an arbitrary URL or run anything else.
+  only accepts a station from a fixed list of 12 names (plus your saved favourites) and an output (`mac`/`tablet`): it can
+  never make the server open an arbitrary URL or run anything else. A favourite from
+  radio-browser.info is accepted only if it is saved in your `pad.json`; its stream URL comes
+  from the directory and must pass a syntactic public-URL check (a name that resolves to a LAN
+  address still passes, so keep the pad on a trusted network). `GET /api/info` takes no
+  parameters: the chips come from your config.
 
 ## Data
 
@@ -235,9 +283,17 @@ lib/state.ts       LED and fader state probes
 lib/radio.ts       Mac-side radio player (mpv/ffplay), station whitelist
 lib/stations.ts    the radio stream whitelist
 lib/viz.ts         runs the audio helper and fans spectrum frames out (SSE)
+lib/context.ts     frontmost app/window/URL probe and the automatic-page rules
+lib/info.ts        info-bar readers (CPU, RAM, battery, ...)
+lib/recorder.ts    macro recorder: runs the helper, turns events into steps
+lib/radiobrowser.ts  radio-browser.info client (search, resolve, URL checks)
 tools/sysaudio.swift  system-audio capture + FFT helper
+tools/recorder.swift  listen-only key/click recorder
+docs/radio-browser-notes.md  what was learnt about the directory's API
 public/pad.*       the pad for the tablet
-public/edit.*      the editor
+public/edit.*      the editor (edit-auto/-bar/-radio/-record.js: its panels)
+public/bar.js      info chips on the pad
+public/templates.js  starter pages for automatic pages
 public/common.js   DOM helper + tile shared by pad and editor
 public/i18n.js     translations (en/it)
 tests/             bun test

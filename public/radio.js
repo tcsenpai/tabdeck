@@ -4,7 +4,8 @@
 // stream). The chosen station and output live on the server, so every tablet sees the same thing.
 // Nightride titles come from its public server-sent-events feed (/meta), read by the browser.
 // Playback survives page changes; only a play/stop tap stops it (and drops the download).
-// The station list mirrors lib/stations.ts, which is the server's whitelist.
+// The station list mirrors lib/stations.ts, which is the server's whitelist. Favourites from radio-browser.info
+// (saved in the config) are appended with setFavs(); they have no fixed URL: the tablet asks the server for it.
 import { t } from "/assets/i18n.js";
 
 const nr = (id, name, color) => ({ id, name, color, group: "nightride", url: `https://stream.nightride.fm/${id}.mp3` });
@@ -22,6 +23,11 @@ export const STATIONS = [
   nr("d-notive", "D-Notive", "green"),
   { id: "virgin", name: "Virgin Radio", color: "red", group: "virgin", url: "https://icecast.unitedradio.it/Virgin.aac" },
 ];
+// Replaces the favourites in STATIONS (the array is shared with the editor's station picker).
+export function setFavs(favs) {
+  for (let i = STATIONS.length - 1; i >= 0; i--) if (STATIONS[i].group === "fav") STATIONS.splice(i, 1);
+  for (const f of favs ?? []) STATIONS.push({ id: `rb:${f.uuid}`, name: f.name, color: "slate", group: "fav", url: "" });
+}
 // What the widget's ‹ › cycle: every station.
 const stationLabel = (s) => (s.group === "nightride" ? `${s.name} FM` : s.name);
 const byId = (id) => STATIONS.find((s) => s.id === id) ?? STATIONS[0];
@@ -53,13 +59,13 @@ const S = { id: STATIONS[0].id, output: "mac", status: "idle", error: "", tablet
 let audio = null;
 let feed = null;
 
-const post = (body) =>
-  fetch("/api/radio", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-    .then(async (res) => {
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
-    });
+const call = (path, opts) =>
+  fetch(path, opts).then(async (res) => {
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  });
+const post = (body) => call("/api/radio", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
 // The server owns station, output and (for the Mac output) the playback status.
 export function syncRadio(r) {
@@ -97,15 +103,29 @@ function set(status) {
   paint();
 }
 
-function tuneTablet() {
+let tuneSeq = 0; // bumped on every (re)tune and stop: a favourite's URL that arrives late is dropped
+async function tuneTablet() {
   const a = ensureAudio();
-  a.src = byId(S.id).url; // reloading on every play also jumps back to the live edge
+  const st = byId(S.id);
+  const seq = ++tuneSeq;
   S.error = "";
   set("loading");
+  let url = st.url;
+  if (!url) {
+    try {
+      url = (await call(`/api/radio/stream?id=${encodeURIComponent(st.id)}`)).url;
+    } catch (e) {
+      if (seq === tuneSeq && S.tabletWants) fail(e);
+      return;
+    }
+    if (seq !== tuneSeq || !S.tabletWants) return;
+  }
+  a.src = url; // reloading on every play also jumps back to the live edge
   a.play().catch(() => S.tabletWants && set("error"));
 }
 
 function stopTablet() {
+  tuneSeq++;
   S.tabletWants = false;
   if (audio) {
     audio.pause();

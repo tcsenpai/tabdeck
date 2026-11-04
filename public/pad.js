@@ -1,6 +1,6 @@
 import { api, applyGrid, h, tileEl } from "/assets/common.js";
 import { t, register, applyStatic } from "/assets/i18n.js";
-import { mountRadio, mountStation, resetTiles, syncRadio } from "/assets/radio.js";
+import { mountRadio, mountStation, resetTiles, setFavs, syncRadio } from "/assets/radio.js";
 import { mountViz, resetViz } from "/assets/viz.js";
 import { setBar } from "/assets/bar.js";
 import en from "/assets/locale-pad-en.js";
@@ -357,6 +357,7 @@ async function load() {
   const d = await api("/api/pad");
   d.pages = visiblePages(d.pages);
   state.cfg = d;
+  setFavs(d.radioFavs);
   kioskBtn.hidden = d.kiosk === "off";
   paintAuto();
   setBar($("chips"), d.bar);

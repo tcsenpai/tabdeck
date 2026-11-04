@@ -3,10 +3,11 @@ import { STYLES } from "/assets/viz.js";
 import { autoSection } from "/assets/edit-auto.js";
 import { barSection } from "/assets/edit-bar.js";
 import { recordControl } from "/assets/edit-record.js";
+import { radioSection } from "/assets/edit-radio.js";
 import { applyStatic, lang, LANGS, register, setLang, t } from "/assets/i18n.js";
 import en from "/assets/locale-edit-en.js";
 import it from "/assets/locale-edit-it.js";
-import { STATIONS } from "/assets/radio.js";
+import { STATIONS, setFavs } from "/assets/radio.js";
 
 register({ en, it });
 applyStatic();
@@ -696,6 +697,7 @@ function renderInspector() {
       h("p", { class: "insp-empty" }, t("edit.insp.empty")),
       autoSection({ cfg: S.cfg, api, touch, rerender: renderAll, newId, currentPage: page }),
       barSection({ cfg: S.cfg, touch, rerender: renderAll }),
+      radioSection({ cfg: S.cfg, api, touch, rerender: renderAll }),
     );
     return;
   }
@@ -848,6 +850,7 @@ function renderAll() {
 try {
   const d = await api("/api/config");
   S.cfg = d.config;
+  setFavs(S.cfg.radioFavs);
   const lan = d.lan[0];
   S.lanUrl = lan;
   if (lan) {

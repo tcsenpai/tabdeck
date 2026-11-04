@@ -1,11 +1,14 @@
-// Radio widget, Mac side: plays a Nightride FM station on the Mac through mpv or ffplay.
-// The station list is a whitelist, so a request can never make the server open an arbitrary URL.
+// Radio widget, Mac side: plays a station on the Mac through mpv or ffplay: one of the built-in
+// whitelisted streams, or a favourite from radio-browser.info (`rb:<uuid>`, resolved when played).
+// A request can never make the server open an arbitrary URL: the only URLs are the whitelist and
+// what the directory returns for a favourite's uuid (checked by lib/radiobrowser.ts safeUrl).
 // Playing on the tablet instead is done entirely in the browser (public/radio.js); this module only
 // remembers the chosen station and output and runs the Mac player.
 import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import type { Subprocess } from "bun";
 import { ConfigError } from "./config.ts";
-import { isStation, stationUrl } from "./stations.ts";
+import { favUuid, isStation, stationUrl } from "./stations.ts";
+import { resolveStream } from "./radiobrowser.ts";
 export type Output = "mac" | "tablet";
 export type Status = "idle" | "loading" | "playing" | "error";
 
@@ -34,17 +37,19 @@ export function findPlayer(): string[] | null {
   return null;
 }
 
-// Validates a request body: any of { station, output, toggle }.
-export function radioCommand(raw: unknown): RadioCommand {
+// Validates a request body: any of { station, output, toggle, tune }. A favourite id (`rb:<uuid>`) only has
+// to be well formed here; the server additionally checks it is one of the saved favourites.
+const isKnownStation = (id: unknown): id is string => isStation(id) || favUuid(id) !== null;
+export function radioCommand(raw: unknown, known: (id: string) => boolean = isKnownStation): RadioCommand {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new ConfigError("expected an object");
   const o = raw as Record<string, unknown>;
   const cmd: RadioCommand = {};
   if (o.station !== undefined) {
-    if (!isStation(o.station)) throw new ConfigError("Unknown station");
+    if (typeof o.station !== "string" || !known(o.station)) throw new ConfigError("Unknown station");
     cmd.station = o.station;
   }
   if (o.tune !== undefined) {
-    if (!isStation(o.tune)) throw new ConfigError("Unknown station");
+    if (typeof o.tune !== "string" || !known(o.tune)) throw new ConfigError("Unknown station");
     cmd.tune = o.tune;
   }
   if (o.output !== undefined) {
@@ -78,6 +83,7 @@ export interface Radio {
 
 export interface RadioOptions {
   player?: string[] | null; // override (tests)
+  resolve?: (uuid: string) => Promise<string>; // a favourite's stream URL (tests); default: radio-browser.info
   readyMs?: number; // how long a running player counts as "loading" before "playing"
   retryMs?: number;
   quickMs?: number;
@@ -100,10 +106,13 @@ export function createRadio(dir: string, opts: RadioOptions = {}): Radio {
   } catch {} // missing or unreadable: defaults
 
   // A player left over by a server that was killed hard would keep playing forever: stop it now.
+  // The pid file holds the pid and, on a second line, the stream URL to look for in the process's command
+  // line (so a recycled pid is never killed by mistake); an older file with only a pid means a Nightride stream.
   try {
-    const pid = Number(readFileSync(pidFile, "utf8"));
+    const [pidLine, marker] = readFileSync(pidFile, "utf8").split("\n");
+    const pid = Number(pidLine);
     const cmdline = Bun.spawnSync(["ps", "-o", "command=", "-p", String(pid)]).stdout.toString();
-    if (pid > 1 && cmdline.includes("nightride.fm")) process.kill(-pid, "SIGKILL");
+    if (pid > 1 && cmdline.includes(marker || "nightride.fm")) process.kill(-pid, "SIGKILL");
   } catch {}
   try { unlinkSync(pidFile); } catch {}
 
@@ -113,6 +122,7 @@ export function createRadio(dir: string, opts: RadioOptions = {}): Radio {
   let proc: Subprocess | null = null;
   let timer: Timer | undefined;
   let fails = 0;
+  let gen = 0; // bumped whenever the player is stopped, so a favourite still being resolved notices it is obsolete
 
   function persist() {
     const tmp = `${file}.tmp`;
@@ -121,6 +131,7 @@ export function createRadio(dir: string, opts: RadioOptions = {}): Radio {
   }
 
   function killProc() {
+    gen++;
     clearTimeout(timer);
     timer = undefined;
     const p = proc;
@@ -141,10 +152,27 @@ export function createRadio(dir: string, opts: RadioOptions = {}): Radio {
     }
     error = undefined;
     status = "loading";
-    const p = Bun.spawn([...player, stationUrl(station)], { stdin: "ignore", stdout: "ignore", stderr: "ignore", detached: true });
+    const uuid = favUuid(station);
+    if (!uuid) return launch(player, stationUrl(station));
+    // A favourite's stream URL comes from the directory, per play (also counts the click it asks for, and
+    // signed URLs expire). A stop or station change meanwhile bumps `gen`.
+    const mine = gen;
+    (opts.resolve ?? resolveStream)(uuid).then(
+      (url) => { if (mine === gen && want) launch(player, url); },
+      (e: unknown) => {
+        if (mine !== gen || !want) return;
+        want = false;
+        status = "error";
+        error = e instanceof Error ? e.message : "Could not resolve the station";
+      },
+    );
+  }
+
+  function launch(player: string[], url: string) {
+    const p = Bun.spawn([...player, url], { stdin: "ignore", stdout: "ignore", stderr: "ignore", detached: true });
     proc = p;
     const t0 = Date.now();
-    writeFileSync(pidFile, String(p.pid));
+    writeFileSync(pidFile, `${p.pid}\n${url}`);
     timer = setTimeout(() => { if (proc === p && status === "loading") status = "playing"; }, readyMs);
     p.exited.then(() => {
       if (proc !== p) return; // stopped or replaced on purpose

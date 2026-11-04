@@ -5,7 +5,7 @@ import { dirname } from "node:path";
 import { parseKeys } from "./keys.ts";
 import { MOUSE_BUTTONS, type MouseButton } from "./mouse.ts";
 import { normalizeArgs, type Args } from "./macos.ts";
-import { isStation } from "./stations.ts";
+import { favId, isRbUuid, isStation } from "./stations.ts";
 import type { AutoRule } from "./context.ts";
 import { isInfoKind, type InfoKind } from "./info.ts";
 
@@ -78,6 +78,13 @@ export interface Profile {
   id: string;
   name: string;
 }
+
+// A station chosen from radio-browser.info. Only the id and the name at the time of adding are kept:
+// the stream URL is resolved on every play.
+export interface RadioFav {
+  uuid: string;
+  name: string;
+}
 export interface Page {
   id: string;
   name: string;
@@ -96,13 +103,14 @@ export interface PadConfig {
   profiles: Profile[];
   auto: Auto;
   bar: InfoKind[]; // system chips in the pad's bottom bar (see lib/info.ts), in order
+  radioFavs: RadioFav[]; // stations picked from radio-browser.info; tiles/widget address them as `rb:<uuid>`
   pages: Page[];
 }
 
 export class ConfigError extends Error {}
 
 const ID_RE = /^[a-z0-9_-]{1,40}$/;
-const LIMITS = { pages: 12, cols: 8, rows: 6, steps: 20, headers: 20, profiles: 8, autoRules: 40, bar: 6 };
+const LIMITS = { pages: 12, cols: 8, rows: 6, steps: 20, headers: 20, profiles: 8, autoRules: 40, bar: 6, radioFavs: 24 };
 
 function obj(v: unknown, where: string): Record<string, unknown> {
   if (!v || typeof v !== "object" || Array.isArray(v)) throw new ConfigError(`${where}: expected an object`);
@@ -287,6 +295,13 @@ export function validateConfig(raw: unknown): PadConfig {
     if (profileIds[p.id]) throw new ConfigError(`profiles: duplicate id "${p.id}"`);
     profileIds[p.id] = true;
   }
+  const radioFavs: RadioFav[] = [];
+  for (const [i, f] of arr(root.radioFavs ?? [], "radioFavs", LIMITS.radioFavs).entries()) {
+    const o = obj(f, `radioFavs[${i}]`);
+    if (!isRbUuid(o.uuid)) throw new ConfigError(`radioFavs[${i}].uuid: not a station id`);
+    const name = str(o.name, `radioFavs[${i}].name`, { required: true, max: 100 });
+    if (!radioFavs.some((x) => x.uuid === o.uuid)) radioFavs.push({ uuid: o.uuid, name });
+  }
   const buttonIds: Record<string, true> = {};
   let radioSeen = false;
   const pages: Page[] = arr(root.pages, "pages", LIMITS.pages).map((p, pi) => {
@@ -337,8 +352,8 @@ export function validateConfig(raw: unknown): PadConfig {
       const f = btn.fader === undefined ? {} : obj(btn.fader, `${bw}.fader`);
       const fader = { get: str(f.get, `${bw}.fader.get`, { max: 2000 }), set: str(f.set, `${bw}.fader.set`, { max: 2000 }) };
       if (isFader && !fader.set.trim()) throw new ConfigError(`${bw}.fader.set: required`);
-      const station = isStationTile ? str(btn.station, `${bw}.station`, { max: 20 }) : "";
-      if (isStationTile && !isStation(station)) throw new ConfigError(`${bw}.station: unknown station`);
+      const station = isStationTile ? str(btn.station, `${bw}.station`, { max: 40 }) : "";
+      if (isStationTile && !isStation(station) && !radioFavs.some((x) => favId(x.uuid) === station)) throw new ConfigError(`${bw}.station: unknown station`);
       return {
         id: bid,
         col,
@@ -371,7 +386,7 @@ export function validateConfig(raw: unknown): PadConfig {
     if (!isInfoKind(k)) throw new ConfigError(`bar: unknown chip "${String(k)}"`);
     if (!bar.includes(k)) bar.push(k);
   }
-  return { version: 2, profiles, auto, bar, pages };
+  return { version: 2, profiles, auto, bar, radioFavs, pages };
 }
 
 // Value of a fader: integer 0–100.
@@ -401,10 +416,11 @@ export interface PublicPage extends Omit<Page, "buttons"> {
 }
 
 // What the tablet sees: presentation only, never the commands (steps, hold, led, fader).
-export function publicView(cfg: PadConfig): { profiles: Profile[]; auto: boolean; bar: InfoKind[]; pages: PublicPage[] } {
+export function publicView(cfg: PadConfig): { profiles: Profile[]; auto: boolean; bar: InfoKind[]; radioFavs: RadioFav[]; pages: PublicPage[] } {
   return {
     profiles: cfg.profiles,
     bar: cfg.bar,
+    radioFavs: cfg.radioFavs,
     auto: cfg.auto.enabled && cfg.auto.rules.length > 0, // the tablet only needs to know whether to follow
     pages: cfg.pages.map((p) => ({
       ...p,
@@ -445,6 +461,7 @@ export function seedConfig(): PadConfig {
     profiles: [],
     auto: { enabled: false, rules: [] },
     bar: [],
+    radioFavs: [],
     pages: [
       {
         id: "main",
