@@ -16,6 +16,7 @@ export default {
   "pad.radio.idle": "TAP PLAY",
   "pad.auto": "Follow the app in front on the Mac (tap to pause)",
   "pad.glow": "Ambient glow that follows the Mac's audio",
+  "pad.fx": "Overlay effects over the pad (tap to switch off/on on this tablet)",
   "pad.mic": "Corners that react to noise: tap to cycle off / this tablet's microphone / the Mac's microphone",
   "pad.mic.insecure": "This tablet only offers its microphone over https or localhost, so the Mac's microphone is used. To use the tablet's, allow this address in chrome://flags/#unsafely-treat-insecure-origin-as-secure.",
   "pad.mic.denied": "Microphone not allowed on this tablet.",

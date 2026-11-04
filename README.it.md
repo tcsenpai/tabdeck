@@ -238,6 +238,15 @@ frame, mai audio, e ascolta solo finché un tablet l'ha acceso; macOS chiede una
 **Microfono**). Su quel tablet sostituisce l'alone ambientale. `MIC_HELPER="comando"` sostituisce
 l'helper (per esempio `tools/mic --test-script`).
 
+### Effetti overlay
+
+Livelli a tutto schermo sopra l'intero pad, scelti nell'editor (niente selezionato → «Effetti
+overlay»): **CRT** (linee di scansione, angoli scuri, sfarfallio), **barra di scansione**,
+**glitch** (strisce che saltano e lampo di colore), **grana di pellicola**, **vignettatura forte**,
+**bordi cromatici**. Solo CSS, si animano soltanto opacity/transform (niente blur né blend mode), i
+tocchi passano attraverso, `prefers-reduced-motion` ferma le animazioni. Accesi di default una volta
+scelti; ogni tablet può spegnerli col pulsante **▤** della barra.
+
 ### Barra info
 
 Fino a sei piccoli indicatori nella barra in basso del pad (CPU, RAM, batteria, disco, volume,
@@ -335,6 +344,7 @@ docs/radio-browser-notes.md  cosa si è scoperto sull'API dell'elenco
 public/pad.*       pad per il tablet
 public/edit.*      editor (edit-auto/-bar/-radio/-record.js: i suoi pannelli)
 public/bar.js      indicatori info sul pad
+public/fx.js       effetti overlay (fx.css gli stili)
 public/corners.js  angoli a microfono (sorgente tablet o Mac)
 public/deco.js     tile decorativi (markup); deco.css gli stili
 public/edit-variants.js  pannello delle varianti per app

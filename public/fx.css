@@ -1,0 +1,66 @@
+/* Overlay effects (public/fx.js). Only opacity and transform animate; no blur, no blend modes. */
+.fx-layer { position: fixed; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; contain: strict; }
+.fx-part { position: absolute; inset: 0; }
+
+/* CRT: scanlines, curved-glass darkening at the corners, a faint flicker */
+.fx-crt {
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.26) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.5) 100%);
+  animation: fx-flicker 7s steps(1) infinite;
+}
+@keyframes fx-flicker { 0%, 100% { opacity: 1; } 31% { opacity: 0.93; } 32% { opacity: 1; } 67% { opacity: 0.9; } 68% { opacity: 0.97; } 69% { opacity: 1; } }
+
+/* A bright band sweeping down the screen */
+.fx-scanbar {
+  inset: 0 0 auto 0;
+  height: 22%;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 16%, transparent) 50%, transparent);
+  transform: translateY(-100%);
+  animation: fx-sweep 8s linear infinite;
+  will-change: transform;
+}
+@keyframes fx-sweep { to { transform: translateY(560%); } }
+
+/* Glitch: thin coloured strips jump sideways while the screen is tinted, a few times a minute */
+.fx-strip { position: absolute; left: 0; right: 0; opacity: 0; animation: fx-glitch 9s steps(1) infinite; }
+.fx-strip-0 { top: 23%; height: 5px; background: var(--accent); animation-delay: 0s; }
+.fx-strip-1 { top: 58%; height: 9px; background: var(--magenta); animation-delay: 0.05s; }
+.fx-strip-2 { top: 81%; height: 3px; background: var(--accent); animation-delay: 0.1s; }
+.fx-tint { position: absolute; inset: 0; background: var(--magenta); opacity: 0; animation: fx-tint 9s steps(1) infinite; }
+@keyframes fx-glitch {
+  0%, 88%, 100% { opacity: 0; transform: none; }
+  89% { opacity: 0.7; transform: translateX(-3%); }
+  91% { opacity: 0.7; transform: translateX(4%); }
+  93% { opacity: 0.5; transform: translateX(-1%); }
+  94% { opacity: 0; }
+}
+@keyframes fx-tint { 0%, 88%, 100% { opacity: 0; } 89% { opacity: 0.07; } 91% { opacity: 0.03; } 92% { opacity: 0; } }
+
+/* Film grain: a small noise image drawn once, jumping around in steps */
+.fx-noise {
+  inset: -12%;
+  opacity: 0.09;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -0.25'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  animation: fx-grain 0.8s steps(1) infinite;
+  will-change: transform;
+}
+@keyframes fx-grain {
+  0% { transform: translate(0, 0); } 17% { transform: translate(-4%, 3%); } 34% { transform: translate(3%, -5%); }
+  51% { transform: translate(-6%, -2%); } 68% { transform: translate(5%, 4%); } 85% { transform: translate(-2%, 6%); }
+}
+
+/* Heavy vignette */
+.fx-vignette { background: radial-gradient(ellipse at 50% 48%, transparent 38%, rgba(2, 3, 10, 0.78) 100%); }
+
+/* Chromatic fringes at the left and right edges, breathing slowly */
+.fx-chroma {
+  background: linear-gradient(90deg, rgba(255, 43, 214, 0.26), transparent 7%, transparent 93%, rgba(0, 240, 255, 0.26));
+  animation: fx-breathe 5s ease-in-out infinite;
+}
+@keyframes fx-breathe { 50% { opacity: 0.55; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-crt, .fx-scanbar, .fx-strip, .fx-tint, .fx-noise, .fx-chroma { animation: none; }
+  .fx-scanbar, .fx-strip, .fx-tint { display: none; }
+}

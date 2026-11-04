@@ -39,3 +39,23 @@ export function glowSection({ cfg, touch }) {
     h("p", { class: "hint" }, t("edit.mic.hint")),
   );
 }
+
+// "Overlay effects": which full-screen effects are drawn over the pad (each tablet can switch them all off with ▤).
+const FX = ["crt", "scanbar", "glitch", "noise", "vignette", "chroma"]; // mirrors FX_NAMES in lib/config.ts
+export function fxSection({ cfg, touch, rerender }) {
+  return h("div", { class: "sec" },
+    h("h3", {}, t("edit.fx.title")),
+    h("p", { class: "hint" }, t("edit.fx.hint")),
+    ...FX.map((name) => h("label", { class: "check" },
+      h("input", {
+        type: "checkbox",
+        checked: cfg.fx.includes(name),
+        onchange: (e) => {
+          cfg.fx = FX.filter((n) => (n === name ? e.target.checked : cfg.fx.includes(n)));
+          touch();
+          rerender();
+        },
+      }),
+      t(`edit.fx.${name}`))),
+  );
+}

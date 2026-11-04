@@ -13,6 +13,8 @@ All notable changes. Newest first. The project is early and has no tagged releas
 - **Info bar:** up to six system chips (CPU, RAM, battery, disk, volume, uptime, load, clock) in the
   pad's bottom bar, chosen in the editor. Stock macOS tools only, cached for 2 s, polled every 5 s
   while the tab is visible. Hidden on narrow screens.
+- **Overlay effects** (`fx`): CRT, scan bar, glitch, film grain, heavy vignette, chromatic edges over the
+  whole pad, chosen in the editor; ▤ bar button switches them off per tablet. CSS only, transform/opacity.
 - **Mic corners:** only the four corners flash with microphone noise (key clicks, taps), from the
   tablet's own microphone (browser-side analysis) or the Mac's (`tools/mic.swift`, numbers only over
   `/api/mic`). Offered by the editor, chosen per tablet with the ◩ bar button, instead of the glow.

@@ -294,3 +294,19 @@ describe("mic corners flag", () => {
     for (const bad of ["yes", 1, null]) expect(withMic(bad)).toThrow(ConfigError);
   });
 });
+
+describe("overlay effects list", () => {
+  const withFx = (v: unknown) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { fx: unknown }).fx = v;
+    return () => validateConfig(c);
+  };
+  test("empty by default; keeps order, drops duplicates, tablet sees it", () => {
+    expect(validateConfig(seedConfig()).fx).toEqual([]);
+    expect(withFx(["glitch", "crt", "glitch"])().fx).toEqual(["glitch", "crt"]);
+    expect(publicView(withFx(["noise"])()).fx).toEqual(["noise"]);
+  });
+  test("only the known effects are accepted", () => {
+    for (const bad of [["shader"], [3], "crt", ["crt", "crt", "crt", "crt", "crt", "crt", "crt"]]) expect(withFx(bad)).toThrow(ConfigError);
+  });
+});

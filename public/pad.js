@@ -5,6 +5,7 @@ import { mountViz, resetViz } from "/assets/viz.js";
 import { setBar } from "/assets/bar.js";
 import { setGlow } from "/assets/glow.js";
 import { setCorners } from "/assets/corners.js";
+import { setFx } from "/assets/fx.js";
 import en from "/assets/locale-pad-en.js";
 import it from "/assets/locale-pad-it.js";
 
@@ -324,7 +325,20 @@ const micMode = () => {
   const m = localStorage.getItem("pad.mic");
   return state.cfg?.micCorners && !glowOn() && (m === "tablet" || m === "mac") ? m : "";
 };
+// Overlay effects (CRT, glitch, grain...): chosen in the editor, on by default, one switch per tablet.
+const fxOn = () => !!state.cfg?.fx?.length && localStorage.getItem("pad.fx") !== "off";
+function paintFx() {
+  $("fx").hidden = !state.cfg?.fx?.length;
+  $("fx").classList.toggle("on", fxOn());
+  setFx(state.cfg?.fx ?? [], fxOn());
+}
+$("fx").addEventListener("click", () => {
+  if (fxOn()) localStorage.setItem("pad.fx", "off");
+  else localStorage.removeItem("pad.fx");
+  paintFx();
+});
 function paintGlow() {
+  paintFx();
   $("glow").hidden = !state.cfg?.glow;
   $("glow").classList.toggle("on", glowOn());
   setGlow(glowOn());

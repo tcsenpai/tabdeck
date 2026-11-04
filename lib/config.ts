@@ -16,6 +16,9 @@ export const SUB = 2;
 export const VIZ_STYLES = ["bars", "mirror", "blocks", "wave", "ring"] as const;
 // Display-only filler tiles (see public/deco.js).
 export const DECO_STYLES = ["clock", "hex", "radar", "pulse", "banner", "leds"] as const;
+// Full-screen overlay effects drawn over the pad (see public/fx.js).
+export const FX_NAMES = ["crt", "scanbar", "glitch", "noise", "vignette", "chroma"] as const;
+export type FxName = (typeof FX_NAMES)[number];
 // Smallest size per kind, in units. A fader needs room for its track, the radio for its LCD.
 export const MIN_SIZE: Record<"button" | "fader" | "radio" | "station" | "viz" | "deco", [number, number]> = {
   button: [1, 1],
@@ -134,6 +137,7 @@ export interface PadConfig {
   radioFavs: RadioFav[]; // stations picked from radio-browser.info; tiles/widget address them as `rb:<uuid>`
   glow: boolean; // ambient glow behind the pad that follows the system audio (each tablet switches it on)
   micCorners: boolean; // the pad's corners flash with the Mac's microphone noise (each tablet switches it on)
+  fx: FxName[]; // overlay effects drawn over the pad, in this order (each tablet can switch them all off)
   pages: Page[];
 }
 
@@ -446,7 +450,12 @@ export function validateConfig(raw: unknown): PadConfig {
   }
   if (root.glow !== undefined && typeof root.glow !== "boolean") throw new ConfigError("glow: expected true/false");
   if (root.micCorners !== undefined && typeof root.micCorners !== "boolean") throw new ConfigError("micCorners: expected true/false");
-  return { version: 2, profiles, auto, bar, radioFavs, glow: root.glow === true, micCorners: root.micCorners === true, pages };
+  const fx: FxName[] = [];
+  for (const f of arr(root.fx ?? [], "fx", FX_NAMES.length)) {
+    if (typeof f !== "string" || !(FX_NAMES as readonly string[]).includes(f)) throw new ConfigError(`fx: unknown effect "${String(f)}" (${FX_NAMES.join("/")})`);
+    if (!fx.includes(f as FxName)) fx.push(f as FxName);
+  }
+  return { version: 2, profiles, auto, bar, radioFavs, glow: root.glow === true, micCorners: root.micCorners === true, fx, pages };
 }
 
 // Value of a fader: integer 0–100.
@@ -487,12 +496,13 @@ export interface PublicPage extends Omit<Page, "buttons"> {
 }
 
 // What the tablet sees: presentation only, never the commands (steps, hold, led, fader).
-export function publicView(cfg: PadConfig): { profiles: Profile[]; auto: boolean; bar: InfoKind[]; radioFavs: RadioFav[]; glow: boolean; micCorners: boolean; pages: PublicPage[] } {
+export function publicView(cfg: PadConfig): { profiles: Profile[]; auto: boolean; bar: InfoKind[]; radioFavs: RadioFav[]; glow: boolean; micCorners: boolean; fx: FxName[]; pages: PublicPage[] } {
   return {
     profiles: cfg.profiles,
     bar: cfg.bar,
     glow: cfg.glow,
     micCorners: cfg.micCorners,
+    fx: cfg.fx,
     radioFavs: cfg.radioFavs,
     auto: cfg.auto.enabled && cfg.auto.rules.length > 0, // the tablet only needs to know whether to follow
     pages: cfg.pages.map((p) => ({
@@ -538,6 +548,7 @@ export function seedConfig(): PadConfig {
     bar: [],
     glow: false,
     micCorners: false,
+    fx: [],
     radioFavs: [],
     pages: [
       {

@@ -3,7 +3,7 @@ import { STYLES } from "/assets/viz.js";
 import { DECO_STYLES } from "/assets/deco.js";
 import { autoSection } from "/assets/edit-auto.js";
 import { variantsSection } from "/assets/edit-variants.js";
-import { barSection, glowSection } from "/assets/edit-bar.js";
+import { barSection, fxSection, glowSection } from "/assets/edit-bar.js";
 import { recordControl } from "/assets/edit-record.js";
 import { radioSection } from "/assets/edit-radio.js";
 import { applyStatic, lang, LANGS, register, setLang, t } from "/assets/i18n.js";
@@ -704,6 +704,7 @@ function renderInspector() {
       autoSection({ cfg: S.cfg, api, touch, rerender: renderAll, newId, currentPage: page }),
       barSection({ cfg: S.cfg, touch, rerender: renderAll }),
       glowSection({ cfg: S.cfg, touch }),
+      fxSection({ cfg: S.cfg, touch, rerender: renderAll }),
       radioSection({ cfg: S.cfg, api, touch, rerender: renderAll }),
     );
     return;

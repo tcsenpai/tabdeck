@@ -144,6 +144,11 @@ Terminal), because launchd starts the process.
   server streams two numbers per frame, never audio, and listens only while a tablet has it on;
   macOS asks once for the **Microphone** permission). It replaces the ambient glow on that tablet.
   `MIC_HELPER="cmd args"` replaces the helper (e.g. `tools/mic --test-script`).
+- **Overlay effects:** full-screen layers over the whole pad, picked in the editor (nothing selected →
+  "Overlay effects"): **CRT** (scanlines, dark corners, flicker), **scan bar**, **glitch** (jumping
+  strips and a colour flash), **film grain**, **heavy vignette**, **chromatic edges**. Pure CSS, only
+  opacity/transform animate (no blur, no blend modes), touches pass through, `prefers-reduced-motion`
+  stops the animations. On by default once chosen; each tablet can switch them off with the **▤** bar button.
 - **Visualizer tile:** a spectrum of whatever the Mac is playing (any app), drawn on the tablet
   like the old media-player visualizations, in five styles you pick per tile (bars with falling peak caps, mirror, segmented blocks, wave, ring), resizable, several
   allowed. `tools/sysaudio.swift` captures the system output with a Core Audio *process tap*
@@ -327,6 +332,7 @@ docs/radio-browser-notes.md  what was learnt about the directory's API
 public/pad.*       the pad for the tablet
 public/edit.*      the editor (edit-auto/-bar/-radio/-record.js: its panels)
 public/bar.js      info chips on the pad
+public/fx.js       overlay effects (fx.css has the styles)
 public/corners.js  mic corners (tablet or Mac source)
 public/deco.js     decoration tiles (markup); deco.css has the styles
 public/edit-variants.js  the per-app variants panel
