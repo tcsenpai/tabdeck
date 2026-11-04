@@ -3,6 +3,7 @@ import { h } from "/assets/common.js";
 import { t } from "/assets/i18n.js";
 
 // Keep in sync with INFO_KINDS in lib/info.ts and MAX in LIMITS.bar of lib/config.ts.
+const field = (label, control) => h("label", { class: "field" }, h("span", {}, label), control);
 const KINDS = ["cpu", "mem", "battery", "disk", "volume", "uptime", "load", "clock"];
 const MAX = 6;
 
@@ -37,6 +38,10 @@ export function glowSection({ cfg, touch }) {
       h("input", { type: "checkbox", checked: cfg.micCorners, onchange: (e) => { cfg.micCorners = e.target.checked; touch(); } }),
       t("edit.mic.enable")),
     h("p", { class: "hint" }, t("edit.mic.hint")),
+    field(t("edit.mic.source"), h("select", { "aria-label": t("edit.mic.source"), onchange: (e) => { cfg.micSource = e.target.value; touch(); } },
+      h("option", { value: "", selected: !cfg.micSource }, t("edit.mic.source.choice")),
+      h("option", { value: "tablet", selected: cfg.micSource === "tablet" }, t("edit.mic.source.tablet")),
+      h("option", { value: "mac", selected: cfg.micSource === "mac" }, t("edit.mic.source.mac")))),
   );
 }
 

@@ -142,7 +142,7 @@ Terminal), because launchd starts the process.
   or localhost, otherwise allow the pad's address in `chrome://flags/#unsafely-treat-insecure-origin-as-secure`),
   or **the Mac's microphone** (`tools/mic.swift`, compiled on first use, analysed on the Mac; the
   server streams two numbers per frame, never audio, and listens only while a tablet has it on;
-  macOS asks once for the **Microphone** permission). It replaces the ambient glow on that tablet.
+  macOS asks once for the **Microphone** permission). It can run together with the ambient glow (which dims a little); the editor can also force the microphone source for every tablet.
   `MIC_HELPER="cmd args"` replaces the helper (e.g. `tools/mic --test-script`).
 - **Overlay effects:** full-screen layers over the whole pad, picked in the editor (nothing selected →
   "Overlay effects"): **CRT** (curved-glass dark corners, flicker; the scanlines are the pad's own), **scan bar**, **glitch** (jumping

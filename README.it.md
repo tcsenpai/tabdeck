@@ -235,7 +235,7 @@ inviato nulla; il browser lo offre solo su https o localhost, altrimenti consent
 pad in `chrome://flags/#unsafely-treat-insecure-origin-as-secure`), oppure **microfono del Mac**
 (`tools/mic.swift`, compilato al primo uso, analizzato sul Mac; il server invia due numeri per
 frame, mai audio, e ascolta solo finché un tablet l'ha acceso; macOS chiede una volta il permesso
-**Microfono**). Su quel tablet sostituisce l'alone ambientale. `MIC_HELPER="comando"` sostituisce
+**Microfono**). Può andare insieme all'alone ambientale (che si abbassa un poco); l'editor può anche forzare la sorgente del microfono per tutti i tablet. `MIC_HELPER="comando"` sostituisce
 l'helper (per esempio `tools/mic --test-script`).
 
 ### Effetti overlay

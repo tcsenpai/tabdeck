@@ -26,3 +26,6 @@
 }
 #mic[data-src="tablet"]::after { content: "T"; }
 #mic[data-src="mac"]::after { content: "M"; }
+
+/* With the corners on, the ambient glow steps back so the clicks stand out. */
+body.mic-on .glow { opacity: 0.6; }

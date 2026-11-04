@@ -310,3 +310,17 @@ describe("overlay effects list", () => {
     for (const bad of [["shader"], [3], "crt", ["crt", "crt", "crt", "crt", "crt", "crt", "crt"]]) expect(withFx(bad)).toThrow(ConfigError);
   });
 });
+
+describe("forced microphone source", () => {
+  const withSrc = (v: unknown) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { micSource: unknown }).micSource = v;
+    return () => validateConfig(c);
+  };
+  test("each tablet chooses by default; tablet or mac can be forced; nothing else", () => {
+    expect(validateConfig(seedConfig()).micSource).toBe("");
+    for (const ok of ["", "tablet", "mac"]) expect(withSrc(ok)().micSource).toBe(ok);
+    expect(publicView(withSrc("mac")()).micSource).toBe("mac");
+    for (const bad of ["both", 1, null, true]) expect(withSrc(bad)).toThrow(ConfigError);
+  });
+});

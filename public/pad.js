@@ -319,11 +319,13 @@ $("auto").addEventListener("click", () => {
 
 // Ambient glow: offered when the config allows it, switched on per tablet (it costs battery and CPU).
 const glowOn = () => !!state.cfg?.glow && localStorage.getItem("pad.glow") === "on";
-// Mic corners: only the corners react to noise, like a mechanical keyboard's lights. Instead of the glow, not
-// with it. The tap cycles off → this tablet's microphone → the Mac's microphone → off.
+// Mic corners: only the corners react to noise, like a mechanical keyboard's lights. They can run together with
+// the glow. The editor may force the source for every tablet (config micSource); otherwise each tablet's tap
+// cycles off → this tablet's microphone → the Mac's microphone → off.
 const micMode = () => {
   const m = localStorage.getItem("pad.mic");
-  return state.cfg?.micCorners && !glowOn() && (m === "tablet" || m === "mac") ? m : "";
+  if (!state.cfg?.micCorners || !(m === "tablet" || m === "mac" || m === "on")) return "";
+  return state.cfg.micSource || (m === "mac" ? "mac" : "tablet");
 };
 // Overlay effects (CRT, glitch, grain...): chosen in the editor, on by default, one switch per tablet.
 const fxOn = () => !!state.cfg?.fx?.length && localStorage.getItem("pad.fx") !== "off";
@@ -342,6 +344,7 @@ function paintGlow() {
   $("glow").hidden = !state.cfg?.glow;
   $("glow").classList.toggle("on", glowOn());
   setGlow(glowOn());
+  document.body.classList.toggle("mic-on", !!micMode()); // the glow gives way a little to the corners
   $("mic").hidden = !state.cfg?.micCorners;
   $("mic").classList.toggle("on", !!micMode());
   $("mic").dataset.src = micMode();
@@ -353,14 +356,17 @@ function paintGlow() {
 }
 $("glow").addEventListener("click", () => {
   if (glowOn()) localStorage.removeItem("pad.glow");
-  else {
-    localStorage.setItem("pad.glow", "on");
-    localStorage.removeItem("pad.mic");
-  }
+  else localStorage.setItem("pad.glow", "on");
   paintGlow();
 });
 $("mic").addEventListener("click", () => {
   const cur = micMode();
+  if (state.cfg.micSource) {
+    // Source forced by the editor: the button only switches the corners on and off.
+    if (cur) localStorage.removeItem("pad.mic");
+    else localStorage.setItem("pad.mic", "on");
+    return paintGlow();
+  }
   let nextMode = { "": "tablet", tablet: "mac", mac: "" }[cur];
   if (nextMode === "tablet" && !navigator.mediaDevices?.getUserMedia) {
     nextMode = "mac"; // insecure origin: the browser hides the microphone, so go straight to the Mac's
@@ -368,7 +374,6 @@ $("mic").addEventListener("click", () => {
   }
   if (nextMode) localStorage.setItem("pad.mic", nextMode);
   else localStorage.removeItem("pad.mic");
-  if (nextMode) localStorage.removeItem("pad.glow");
   paintGlow();
 });
 
