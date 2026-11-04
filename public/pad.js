@@ -346,6 +346,9 @@ $("fx").addEventListener("click", () => {
   else localStorage.removeItem("pad.fx");
   paintFx();
 });
+// A tiny meter on the ◩ button: how loud the microphone hears things right now (0..1). If it stays flat, the
+// microphone is not reaching the pad (permission, http instead of https, wrong source) rather than the tiles.
+subscribeMic((level) => $("mic").style.setProperty("--lvl", level.toFixed(2)));
 function paintGlow() {
   paintFx();
   $("glow").hidden = !state.cfg?.glow;
