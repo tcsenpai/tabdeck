@@ -20,7 +20,7 @@ const state = {
   pageId: localStorage.getItem("pad.page"),
   online: true,
   live: false, // the current page has LEDs or faders to keep updated
-  data: { leds: {}, faders: {} },
+  data: { leds: {}, faders: {}, variants: {} },
 };
 
 const POLL_MS = 2500;
@@ -167,22 +167,49 @@ function wireFader(b, el) {
   };
 }
 
+// ───────────── Keys that change with the app in front ─────────────
+// The server sends, per key with variants, the index of the one that matches the app in front (-1 = the base key).
+// Only presentation is here; the commands stay on the Mac.
+const variantOf = (b) => {
+  const i = state.data.variants?.[b.id];
+  return Number.isInteger(i) && b.variants?.[i] ? i : -1;
+};
+function viewOf(b) {
+  const i = variantOf(b);
+  if (i < 0) return { ...b, _vi: -1 };
+  const { label, icon, color, confirm, showOutput, hasHold, hidden } = b.variants[i];
+  return { ...b, label, icon, color, confirm, showOutput, hasHold, hidden, _vi: i };
+}
+
+function buildTile(b) {
+  const v = viewOf(b);
+  const el = tileEl(v);
+  if (b.kind === "radio") mountRadio(el);
+  else if (b.kind === "station") mountStation(el, b.station);
+  else if (b.kind === "viz") mountViz(el);
+  else if (b.kind === "fader") wireFader(v, el);
+  else if (b.kind === "button") wireButton(v, el);
+  el._vi = v._vi;
+  el.classList.toggle("gone", !!v.hidden); // hidden for this app: the cell stays empty
+  return el;
+}
+
+// Rebuilds only the keys whose variant changed.
+function swapVariants() {
+  for (const b of page().buttons) {
+    if (!b.variants?.length) continue;
+    const el = gridEl.querySelector(`.tile[data-id="${CSS.escape(b.id)}"]`);
+    if (el && el._vi !== variantOf(b)) el.replaceWith(buildTile(b));
+  }
+}
 function render() {
   const p = page();
   state.pageId = p.id;
-  state.live = autoOn() || p.buttons.some((b) => b.hasLed || b.kind === "fader" || b.kind === "radio" || b.kind === "station");
+  state.live = autoOn() || p.buttons.some((b) => b.hasLed || b.variants?.length || b.kind === "fader" || b.kind === "radio" || b.kind === "station");
   applyGrid(gridEl, p);
   resetTiles(); // the previous page's station tiles are about to be replaced
   resetViz();
-  const tiles = p.buttons.map((b) => {
-    const el = tileEl(b);
-    if (b.kind === "radio") mountRadio(el);
-    else if (b.kind === "station") mountStation(el, b.station);
-    else if (b.kind === "viz") mountViz(el);
-    else if (b.kind === "fader") wireFader(b, el);
-    else wireButton(b, el);
-    return el;
-  });
+  const tiles = p.buttons.map(buildTile);
   gridEl.replaceChildren(
     ...(tiles.length
       ? tiles
@@ -250,6 +277,7 @@ gridEl.addEventListener("touchend", (e) => {
 
 // ───────────── Live state ─────────────
 function applyState() {
+  swapVariants();
   const { leds, faders } = state.data;
   for (const el of gridEl.querySelectorAll(".tile")) {
     const id = el.dataset.id;
@@ -351,7 +379,9 @@ async function press(b, el, mode) {
   navigator.vibrate?.(mode === "hold" ? [12, 40, 12] : 12);
   el.dataset.state = "running";
   try {
-    const r = await api(`/api/${mode}/${encodeURIComponent(b.id)}`, { method: "POST" });
+    // A key with variants says which one it is showing; the server refuses if the app in front changed since.
+    const body = b.variants?.length ? JSON.stringify({ variant: b._vi ?? -1 }) : undefined;
+    const r = await api(`/api/${mode}/${encodeURIComponent(b.id)}`, { method: "POST", body });
     if (r.ok) {
       flash(el, "ok");
       if (b.showOutput && r.out) toast(r.out);

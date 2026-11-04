@@ -14,13 +14,16 @@ import { isInfoKind, type InfoKind } from "./info.ts";
 export const SUB = 2;
 // How a visualizer tile draws the spectrum (see public/viz.js).
 export const VIZ_STYLES = ["bars", "mirror", "blocks", "wave", "ring"] as const;
+// Display-only filler tiles (see public/deco.js).
+export const DECO_STYLES = ["clock", "hex", "radar", "pulse", "banner", "leds"] as const;
 // Smallest size per kind, in units. A fader needs room for its track, the radio for its LCD.
-export const MIN_SIZE: Record<"button" | "fader" | "radio" | "station" | "viz", [number, number]> = {
+export const MIN_SIZE: Record<"button" | "fader" | "radio" | "station" | "viz" | "deco", [number, number]> = {
   button: [1, 1],
   station: [1, 1],
   fader: [2, 1],
   radio: [4, 2],
   viz: [2, 1],
+  deco: [1, 1],
 };
 
 export const COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "violet", "pink"] as const;
@@ -52,7 +55,7 @@ export interface Button {
   label: string;
   icon: string;
   color: Color;
-  kind: "button" | "fader" | "radio" | "station" | "viz";
+  kind: "button" | "fader" | "radio" | "station" | "viz" | "deco";
   confirm: boolean;
   showOutput: boolean;
   steps: Step[];
@@ -64,11 +67,36 @@ export interface Button {
   h: number;
   station: string; // kind "station": the station this tile plays/stops (see lib/stations.ts)
   style: string; // kind "viz": one of VIZ_STYLES, "" for other kinds
+  variants: Variant[]; // kind "button" only: look and actions that replace the base ones while a given app is in front
+  border: boolean; // false: no frame, no 3D body, the content floats on the background (decorative tiles default to false)
+}
+
+// "If <app> is in front, this key becomes …". First matching variant wins; no match = the base key.
+// The LED / latching state stays with the base key. `hidden` makes the key disappear for that app.
+export interface Variant {
+  app: string;
+  mode: "is" | "contains";
+  url: string;
+  title: string;
+  hidden: boolean;
+  label: string;
+  icon: string;
+  color: Color;
+  confirm: boolean;
+  showOutput: boolean;
+  steps: Step[];
+  hold: Step[];
 }
 
 function vizStyle(v: unknown, where: string): string {
   if (v === undefined || v === "") return "bars";
   if (typeof v !== "string" || !(VIZ_STYLES as readonly string[]).includes(v)) throw new ConfigError(`${where}: ${VIZ_STYLES.join("/")}`);
+  return v;
+}
+
+function decoStyle(v: unknown, where: string): string {
+  if (v === undefined || v === "") return "clock";
+  if (typeof v !== "string" || !(DECO_STYLES as readonly string[]).includes(v)) throw new ConfigError(`${where}: ${DECO_STYLES.join("/")}`);
   return v;
 }
 
@@ -111,7 +139,7 @@ export interface PadConfig {
 export class ConfigError extends Error {}
 
 const ID_RE = /^[a-z0-9_-]{1,40}$/;
-const LIMITS = { pages: 12, cols: 8, rows: 6, steps: 20, headers: 20, profiles: 8, autoRules: 40, bar: 6, radioFavs: 24 };
+const LIMITS = { pages: 12, cols: 8, rows: 6, steps: 20, headers: 20, profiles: 8, autoRules: 40, bar: 6, radioFavs: 24, variants: 8 };
 
 function obj(v: unknown, where: string): Record<string, unknown> {
   if (!v || typeof v !== "object" || Array.isArray(v)) throw new ConfigError(`${where}: expected an object`);
@@ -284,6 +312,31 @@ function validateAuto(raw: unknown, pageIds: Record<string, true>): Auto {
   return { enabled: o.enabled === true, rules };
 }
 
+function validateVariants(raw: unknown, where: string): Variant[] {
+  return arr(raw ?? [], where, LIMITS.variants).map((v, i) => {
+    const w = `${where}[${i}]`;
+    const x = obj(v, w);
+    const mode = x.mode === undefined ? "is" : x.mode;
+    if (mode !== "is" && mode !== "contains") throw new ConfigError(`${w}.mode: is/contains`);
+    const color = x.color === undefined ? "slate" : x.color;
+    if (!COLORS.includes(color as Color)) throw new ConfigError(`${w}.color: ${COLORS.join("/")}`);
+    return {
+      app: str(x.app, `${w}.app`, { required: true, max: 100 }),
+      mode,
+      url: str(x.url, `${w}.url`, { max: 100 }),
+      title: str(x.title, `${w}.title`, { max: 100 }),
+      hidden: x.hidden === true,
+      label: str(x.label, `${w}.label`, { max: 40 }),
+      icon: str(x.icon, `${w}.icon`, { max: 12 }),
+      color: color as Color,
+      confirm: x.confirm === true,
+      showOutput: x.showOutput === true,
+      steps: validateSteps(x.steps ?? [], `${w}.steps`),
+      hold: validateSteps(x.hold ?? [], `${w}.hold`),
+    };
+  });
+}
+
 export function validateConfig(raw: unknown): PadConfig {
   const root = obj(migrateConfig(raw), "config");
   const pageIds: Record<string, true> = {};
@@ -325,13 +378,14 @@ export function validateConfig(raw: unknown): PadConfig {
       const col = int(btn.col, `${bw}.col`, 0, ucols - 1);
       const row = int(btn.row, `${bw}.row`, 0, urows - 1);
       const kind = btn.kind === undefined ? "button" : btn.kind;
-      if (kind !== "button" && kind !== "fader" && kind !== "radio" && kind !== "station" && kind !== "viz") {
-        throw new ConfigError(`${bw}.kind: button/fader/radio/station/viz`);
+      if (kind !== "button" && kind !== "fader" && kind !== "radio" && kind !== "station" && kind !== "viz" && kind !== "deco") {
+        throw new ConfigError(`${bw}.kind: button/fader/radio/station/viz/deco`);
       }
       const isFader = kind === "fader";
       const isRadio = kind === "radio";
       const isStationTile = kind === "station";
-      const inert = isFader || isRadio || isStationTile || kind === "viz"; // no tap actions of their own
+      const inert = isFader || isRadio || isStationTile || kind === "viz" || kind === "deco"; // no tap actions of their own
+      if (btn.border !== undefined && typeof btn.border !== "boolean") throw new ConfigError(`${bw}.border: expected true/false`);
       const [minW, minH] = MIN_SIZE[kind];
       const width = btn.w === undefined ? (isRadio ? 3 * SUB : kind === "viz" ? 2 * SUB : SUB) : int(btn.w, `${bw}.w`, minW, ucols);
       const height = btn.h === undefined ? SUB : int(btn.h, `${bw}.h`, minH, urows);
@@ -373,7 +427,9 @@ export function validateConfig(raw: unknown): PadConfig {
         w: width,
         h: height,
         station,
-        style: kind === "viz" ? vizStyle(btn.style, `${bw}.style`) : "",
+        style: kind === "viz" ? vizStyle(btn.style, `${bw}.style`) : kind === "deco" ? decoStyle(btn.style, `${bw}.style`) : "",
+        variants: kind === "button" ? validateVariants(btn.variants, `${bw}.variants`) : [],
+        border: btn.border === undefined ? kind !== "deco" : btn.border,
       };
     });
     const profile = page.profile === undefined || page.profile === "" ? "" : id(page.profile, `${w}.profile`);
@@ -396,6 +452,15 @@ export function faderValue(v: unknown): number {
   return int(v, "value", 0, 100);
 }
 
+export interface PublicVariant {
+  label: string;
+  icon: string;
+  color: Color;
+  confirm: boolean;
+  showOutput: boolean;
+  hasHold: boolean;
+  hidden: boolean;
+}
 export interface PublicButton {
   id: string;
   col: number;
@@ -404,6 +469,7 @@ export interface PublicButton {
   icon: string;
   color: Color;
   kind: Button["kind"];
+  border: boolean;
   confirm: boolean;
   showOutput: boolean;
   hasHold: boolean;
@@ -412,6 +478,7 @@ export interface PublicButton {
   h: number;
   station: string;
   style: string;
+  variants: PublicVariant[]; // presentation only: which app triggers which one stays on the Mac
 }
 export interface PublicPage extends Omit<Page, "buttons"> {
   buttons: PublicButton[];
@@ -443,6 +510,8 @@ export function publicView(cfg: PadConfig): { profiles: Profile[]; auto: boolean
         h: x.h,
         station: x.station,
         style: x.style,
+        border: x.border,
+        variants: x.variants.map((v) => ({ label: v.label, icon: v.icon, color: v.color, confirm: v.confirm, showOutput: v.showOutput, hasHold: v.hold.length > 0, hidden: v.hidden })),
       })),
     })),
   };
@@ -454,7 +523,7 @@ const b = (
   extra: Partial<Pick<Button, "confirm" | "showOutput" | "hold" | "led" | "toggle">> = {},
 ): Button => ({
   id, col: col * SUB, row: row * SUB, label, icon, color, kind: "button", confirm: false, showOutput: false, steps,
-  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: SUB, h: SUB, station: "", style: "", ...extra,
+  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: SUB, h: SUB, station: "", style: "", variants: [], border: true, ...extra,
 });
 
 // Example pad on first start: harmless actions, all editable.
@@ -495,7 +564,7 @@ export function seedConfig(): PadConfig {
           ]),
           {
             id: "volume", col: 2 * SUB, row: 1 * SUB, label: "Volume", icon: "🎚️", color: "teal", kind: "fader",
-            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: SUB, h: SUB, station: "", style: "",
+            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: SUB, h: SUB, station: "", style: "", variants: [], border: true,
             fader: {
               get: "osascript -e 'output volume of (get volume settings)'",
               set: 'osascript -e "set volume output volume $PAD_VALUE"',

@@ -1,6 +1,8 @@
 import { api, applyGrid, COLORS, h, MIN_SIZE, SUB, tileEl } from "/assets/common.js";
 import { STYLES } from "/assets/viz.js";
+import { DECO_STYLES } from "/assets/deco.js";
 import { autoSection } from "/assets/edit-auto.js";
+import { variantsSection } from "/assets/edit-variants.js";
 import { barSection, glowSection } from "/assets/edit-bar.js";
 import { recordControl } from "/assets/edit-record.js";
 import { radioSection } from "/assets/edit-radio.js";
@@ -247,7 +249,7 @@ function addButton(col, row) {
   const p = page();
   // As big as fits, up to a classic tile; the unit itself is always free, so 1×1 is the floor.
   const [w, h] = [[2, 2], [2, 1], [1, 2], [1, 1]].find(([ww, hh]) => fits(p, col, row, ww, hh));
-  const b = { id: newId(), col, row, label: t("edit.grid.newButton"), icon: "⭐", color: "slate", kind: "button", confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w, h, station: "" };
+  const b = { id: newId(), col, row, label: t("edit.grid.newButton"), icon: "⭐", color: "slate", kind: "button", confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w, h, station: "", style: "", variants: [], border: true };
   p.buttons.push(b);
   touch();
   select(b.id);
@@ -667,7 +669,11 @@ function setKind(btn, kind) {
   const want = wants.find(([w, h]) => placeNear(page(), btn.col, btn.row, w, h, btn));
   if (!want) return failWith("edit.size.noRoom");
   Object.assign(btn, { ...placeNear(page(), btn.col, btn.row, want[0], want[1], btn), w: want[0], h: want[1] });
+  const was = btn.kind;
   btn.kind = kind;
+  // The style field is shared by visualizers and decorations: each starts from its own default.
+  btn.style = kind === "deco" ? "clock" : kind === "viz" ? "bars" : "";
+  if ((kind === "deco") !== (was === "deco")) btn.border = kind !== "deco"; // decorations float on the background by default
   S.err = "";
   // A new fader starts out with the Mac's volume: it is the most common use case.
   if (kind === "fader" && !btn.fader.set.trim()) btn.fader = { get: VOL_GET, set: VOL_SET };
@@ -706,6 +712,7 @@ function renderInspector() {
   const isRadio = btn.kind === "radio";
   const isStation = btn.kind === "station";
   const isViz = btn.kind === "viz";
+  const isDeco = btn.kind === "deco";
   const preview = () => renderGrid();
   const [mainBox, holdBox, ledBox, getBox, setBox] = [h("div"), h("div"), h("div"), h("div"), h("div")];
   const testBtn = h("button", { class: "btn primary", type: "button", disabled: !btn.steps.length, onclick: () => runTest(btn.steps, mainBox, testBtn, btn.confirm) }, t("edit.insp.test"));
@@ -747,8 +754,19 @@ function renderInspector() {
         h("button", { class: "swatch", type: "button", dataset: { color: c }, title: c, "aria-pressed": String(btn.color === c), onclick: () => { btn.color = c; touch(); preview(); renderInspector(); } })))),
     common,
   );
+  const decoSec = () => h("div", { class: "sec" },
+    h("h3", {}, t("edit.insp.deco")),
+    h("p", { class: "hint" }, t("edit.deco.hint")),
+    field(t("edit.deco.style"), h("select", { "aria-label": t("edit.deco.style"), onchange: (e) => { btn.style = e.target.value; touch(); preview(); } },
+      ...DECO_STYLES.map((s) => h("option", { value: s, selected: (btn.style || "clock") === s }, t(`edit.deco.style.${s}`))))),
+    field(t("edit.deco.label"), text(btn, "label", { after: preview, max: 40 })),
+    h("div", { class: "field" }, h("span", {}, t("edit.insp.color")),
+      h("div", { class: "swatches" }, ...COLORS.map((c) =>
+        h("button", { class: "swatch", type: "button", dataset: { color: c }, title: c, "aria-pressed": String(btn.color === c), onclick: () => { btn.color = c; touch(); preview(); renderInspector(); } })))),
+    common,
+  );
   insp.replaceChildren(
-    ...(isRadio || isViz ? [] : [h("div", { class: "sec" },
+    ...(isRadio || isViz || isDeco ? [] : [h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.appearance")),
       field(t("edit.insp.label"), text(btn, "label", { after: preview, max: 40 })),
       field(t("edit.insp.icon"), (() => {
@@ -762,20 +780,25 @@ function renderInspector() {
     )]),
     sizeSec(),
     h("div", { class: "sec" },
+      h("label", { class: "check" },
+        h("input", { type: "checkbox", checked: btn.border !== false, onchange: (e) => { btn.border = e.target.checked; touch(); preview(); } }),
+        `${t("edit.insp.border")} `, h("small", {}, t("edit.insp.borderHint")))),
+    h("div", { class: "sec" },
       h("h3", {}, t("edit.insp.behavior")),
       field(t("edit.insp.kind"), h("select", { "aria-label": t("edit.insp.kind"), onchange: (e) => setKind(btn, e.target.value) },
-        h("option", { value: "button", selected: !isFader && !isRadio && !isStation && !isViz }, t("edit.insp.kind.button")),
+        h("option", { value: "button", selected: !isFader && !isRadio && !isStation && !isViz && !isDeco }, t("edit.insp.kind.button")),
         h("option", { value: "fader", selected: isFader }, t("edit.insp.kind.fader")),
         h("option", { value: "radio", selected: isRadio }, t("edit.insp.kind.radio")),
         h("option", { value: "station", selected: isStation }, t("edit.insp.kind.station")),
-        h("option", { value: "viz", selected: isViz }, t("edit.insp.kind.viz")))),
-      ...(isFader || isRadio || isStation || isViz ? [] : [
+        h("option", { value: "viz", selected: isViz }, t("edit.insp.kind.viz")),
+        h("option", { value: "deco", selected: isDeco }, t("edit.insp.kind.deco")))),
+      ...(isFader || isRadio || isStation || isViz || isDeco ? [] : [
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.confirm, onchange: (e) => { btn.confirm = e.target.checked; touch(); } }), `${t("edit.insp.confirm")} `, h("small", {}, t("edit.insp.confirmHint"))),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.showOutput, onchange: (e) => { btn.showOutput = e.target.checked; touch(); } }), t("edit.insp.showOutput")),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: btn.toggle, onchange: (e) => { btn.toggle = e.target.checked; touch(); preview(); } }), `${t("edit.insp.toggle")} `, h("small", {}, t("edit.insp.toggleHint"))),
       ]),
     ),
-    ...(isRadio ? [radioSec()] : isViz ? [vizSec()] : isStation ? [stationSec()] : isFader
+    ...(isRadio ? [radioSec()] : isViz ? [vizSec()] : isDeco ? [decoSec()] : isStation ? [stationSec()] : isFader
       ? [
           h("div", { class: "sec" },
             h("h3", {}, t("edit.insp.fader")),
@@ -805,6 +828,7 @@ function renderInspector() {
             field(t("edit.insp.ledCmd"), text(btn, "led", { mono: true, after: preview, placeholder: 'pgrep -x Music' })),
             ledTest, ledBox,
           ),
+          variantsSection({ btn: ((btn.variants ??= []), btn), api, touch, rerender: renderInspector, field, text, stepsSection }),
         ]),
   );
 }

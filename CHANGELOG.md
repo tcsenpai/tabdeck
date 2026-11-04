@@ -13,6 +13,14 @@ All notable changes. Newest first. The project is early and has no tagged releas
 - **Info bar:** up to six system chips (CPU, RAM, battery, disk, volume, uptime, load, clock) in the
   pad's bottom bar, chosen in the editor. Stock macOS tools only, cached for 2 s, polled every 5 s
   while the tab is visible. Hidden on narrow screens.
+- **Per-app key variants:** a key can look and act differently (or disappear) depending on the app in
+  front on the Mac; first match wins, any number of keys per app. The state endpoint sends variant
+  indexes only; a tap carries the variant it shows and is refused with 409 if the app in front
+  changed. `matchRule` is now generic over any rule shape.
+- **Decoration tiles** (kind `deco`: clock, hex, radar, pulse, banner, leds) and a **per-tile
+  border switch** (`border`, default on; decorations default off).
+- **Glow follows the beat:** the glow rescales each zone against its own recent floor and ceiling,
+  because the helper's levels sit high and flat for most music and the glow looked static.
 - **Ambient glow** ("Ambilight"): edge light that follows the system audio, bass at the bottom, mids at
   the sides, highs at the top. Offered by the editor, switched on per tablet with the ✦ bar button;
   rides on the visualizer's stream (`/api/viz` is now also open when the glow is enabled).

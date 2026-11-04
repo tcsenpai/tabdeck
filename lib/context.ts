@@ -119,7 +119,8 @@ export function createContext(opts: ContextOptions = {}): ContextProbe {
 
 const lc = (v: unknown): string => (typeof v === "string" ? v.toLowerCase() : "");
 
-export function matchRule(rules: AutoRule[], ctx: AppContext): AutoRule | undefined {
+// Works on any rule shape with app/mode/url/title (automatic-page rules, tile variants); the first match wins.
+export function matchRule<R extends Omit<AutoRule, "page">>(rules: R[], ctx: AppContext): R | undefined {
   if (!Array.isArray(rules) || !ctx || typeof ctx !== "object") return undefined;
   const names = [lc(ctx.app), lc(ctx.bundle)].filter((n) => n !== "");
   const url = lc(ctx.url);

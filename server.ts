@@ -1,10 +1,10 @@
 // Macro pad: a single Bun process running on the Mac.
 //   /        touch pad for the tablet (anyone on the LAN: can only press already-defined buttons)
 //   /edit    editor (Mac only, via localhost)
-import { ConfigError, createStore, faderValue, publicView, validateStep, validateSteps, type Step } from "./lib/config.ts";
+import { ConfigError, createStore, faderValue, publicView, validateStep, validateSteps, type Button, type Step } from "./lib/config.ts";
 import { createState } from "./lib/state.ts";
 import { catalog, macScript } from "./lib/macos.ts";
-import { APP_PRESETS, createContext, matchRule } from "./lib/context.ts";
+import { APP_PRESETS, createContext, matchRule, type AppContext } from "./lib/context.ts";
 import { createInfo } from "./lib/info.ts";
 import { createRecorder } from "./lib/recorder.ts";
 import { createRadio, radioCommand } from "./lib/radio.ts";
@@ -40,6 +40,12 @@ const fromDirectory = async <T>(p: Promise<T>): Promise<T | Response> => {
 // replaces it (tests / `tools/sysaudio --test-tone`).
 const viz = createViz({ dir: DATA_DIR, helper: process.env.VIZ_HELPER?.trim() ? process.env.VIZ_HELPER.trim().split(/\s+/) : undefined });
 const hasViz = () => store.config.glow || store.config.pages.some((p) => p.buttons.some((b) => b.kind === "viz")); // the ambient glow or a visualizer tile
+const hasVariants = () => store.config.pages.some((p) => p.buttons.some((b) => b.variants.length));
+// Which variant of a key is active for the app in front (-1 = the base key).
+const variantIndex = (btn: Button, ctx: AppContext): number => {
+  const m = matchRule(btn.variants, ctx);
+  return m ? btn.variants.indexOf(m) : -1;
+};
 const frontmost = createContext(); // which app is in front on the Mac (automatic pages, editor "detect")
 const info = createInfo();
 // RECORDER_HELPER replaces the compiled helper's argv (tests: `recorder --test-script`, which never touches the input tap).
@@ -71,8 +77,7 @@ async function serveFile(name: string): Promise<Response> {
   return new Response(file, { headers: noCache });
 }
 
-async function readJson(req: Request): Promise<unknown> {
-  const text = await req.text();
+function parseJson(text: string): unknown {
   if (text.length > MAX_BODY) throw new ConfigError("Request too large");
   try {
     return JSON.parse(text);
@@ -80,6 +85,12 @@ async function readJson(req: Request): Promise<unknown> {
     throw new ConfigError("Invalid JSON");
   }
 }
+const readJson = async (req: Request): Promise<unknown> => parseJson(await req.text());
+// A body that may be absent (a press from a tablet without variants sends none).
+const optionalJson = async (req: Request): Promise<unknown> => {
+  const text = await req.text();
+  return text.trim() ? parseJson(text) : {};
+};
 
 const FORBIDDEN_HTML = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <body style="font:16px system-ui;background:#0f1115;color:#e6e8ee;display:grid;place-items:center;height:100vh;margin:0">
@@ -170,6 +181,11 @@ const server = Bun.serve({
           // Only the page id goes to the tablet: the app name, window title or URL stay on the Mac.
           out.auto = { page: matchRule(rules, await frontmost.get())?.page ?? "" };
         }
+        if (hasVariants()) {
+          // Only indexes go to the tablet (-1 = the base key); which app triggered them stays on the Mac.
+          const ctx = await frontmost.get();
+          out.variants = Object.fromEntries(store.config.pages.flatMap((p) => p.buttons).filter((b) => b.variants.length).map((b) => [b.id, variantIndex(b, ctx)]));
+        }
         return json(out);
       }
       if (method === "GET" && path === "/api/viz") {
@@ -202,6 +218,16 @@ const server = Bun.serve({
           const body = (await readJson(req)) as { value?: unknown };
           env = { PAD_VALUE: String(faderValue(body?.value)) };
           steps = [{ type: "shell", cmd: btn.fader.set, cwd: "", timeout: 10 }];
+        } else if (btn.variants.length) {
+          // The tablet says which variant it is showing; it only runs if that is still the one for the app in
+          // front (a shortcut meant for one app must never reach another).
+          const body = (await optionalJson(req)) as { variant?: unknown } | null;
+          const want = Number.isInteger(body?.variant) ? (body!.variant as number) : -1;
+          const now = variantIndex(btn, await frontmost.get());
+          if (want !== now) return json({ error: "The app in front changed" }, 409);
+          if (now >= 0 && btn.variants[now].hidden) return json({ error: "This key is hidden for the app in front" }, 409);
+          const v = now >= 0 ? btn.variants[now] : btn;
+          steps = kind === "hold" ? v.hold : v.steps;
         } else {
           steps = kind === "hold" ? btn.hold : btn.steps;
         }

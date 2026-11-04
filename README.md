@@ -144,6 +144,21 @@ Terminal), because launchd starts the process.
   process that runs the server; when nothing is heard the tile says "NO AUDIO (or allow System
   Audio Recording)" because silence and a denied permission look the same. `VIZ_HELPER="cmd args"`
   replaces the helper (e.g. `tools/sysaudio --test-tone` for a demo signal).
+- **Per-app variants of a key:** "if Zoom is in front, this key becomes Mute". In a key's inspector
+  add variants: an app (name or bundle id, exact or "contains", optionally narrowed by a browser URL
+  or window title), and for it a label, icon, colour, confirmation, actions, long-press actions, or
+  just **hide the key**. The first matching variant wins; with no match the key stays as it is.
+  Any number of keys can react to the same app, so one spot on the pad can be a different button per
+  app. The LED / remember-on-off state stays with the base key. The tablet is only told which variant
+  to show, never the app: on a tap it says which variant it is showing and the Mac runs it only if
+  that is still the one for the app in front (otherwise "The app in front changed", and the tile
+  refreshes). Reuses the Automation permission of the automatic pages.
+- **Decoration tiles:** display-only cyberpunk filler (kind "Decoration"): clock with date, scrolling
+  hex dump, radar, heartbeat line, glitching banner (shows the tile's text), rack status lights.
+  Touching them does nothing; they animate with transform/opacity only. Decorations start
+  borderless.
+- **Border on/off per tile:** every tile has a "Border" switch. Off removes the frame and 3D body and
+  leaves just the content floating on the background (works for keys, faders, the radio, ...).
 - **Radio favourites:** search the community directory [radio-browser.info](https://www.radio-browser.info)
   from the editor (nothing selected → "Radio favourites") and star the stations you like. They
   join the widget's ‹ › and the station tile's list. Only the id and name are saved; the stream
@@ -300,6 +315,8 @@ docs/radio-browser-notes.md  what was learnt about the directory's API
 public/pad.*       the pad for the tablet
 public/edit.*      the editor (edit-auto/-bar/-radio/-record.js: its panels)
 public/bar.js      info chips on the pad
+public/deco.js     decoration tiles (markup); deco.css has the styles
+public/edit-variants.js  the per-app variants panel
 public/templates.js  starter pages for automatic pages
 public/common.js   DOM helper + tile shared by pad and editor
 public/i18n.js     translations (en/it)

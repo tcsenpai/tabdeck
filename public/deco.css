@@ -1,0 +1,77 @@
+/* Decorative tiles (kind "deco", public/deco.js): display-only cyberpunk filler.
+   Only transform and opacity animate, so they stay on the compositor of a weak tablet. */
+.tile.deco { cursor: default; }
+.tile .in.dc { padding: 0; gap: 0; overflow: hidden; border-radius: inherit; color: var(--c); }
+
+/* Borderless tiles (any kind): no frame, no 3D body, no floor shadow; the content floats on the background. */
+.tile.nob { --rest-x: 0deg; --rest-y: 0deg; }
+.tile.nob::after,
+.tile.nob .f.top,
+.tile.nob .f.bottom,
+.tile.nob .f.right,
+.tile.nob .front::before { display: none; }
+.tile.nob .front,
+.tile.nob[data-on="1"] .front { background: none; border-color: transparent; box-shadow: none; }
+
+/* clock */
+.dc-clock { display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--mono); }
+.dc-time { font-size: min(17cqw, 46cqh); font-weight: 700; letter-spacing: 0.06em; text-shadow: 0 0 14px var(--glow); font-variant-numeric: tabular-nums; }
+.dc-date { font-size: min(7cqw, 15cqh); letter-spacing: 0.2em; opacity: 0.7; margin-top: 0.3em; }
+
+/* hex dump scrolling upwards */
+.dc-hex { -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
+.dc-hexwrap { position: absolute; left: 0; right: 0; top: 0; display: block; animation: dc-scroll 16s linear infinite; will-change: transform; }
+.dc-hexcol { display: block; padding: 0 8cqmin; font: 600 max(8px, 5.2cqmin)/1.5 var(--mono); letter-spacing: 0.08em; white-space: pre; opacity: 0.75; text-shadow: 0 0 8px var(--glow); }
+@keyframes dc-scroll { to { transform: translateY(-50%); } }
+
+/* radar */
+.dc-radar { display: grid; place-items: center; }
+.dc-rings, .dc-sweep { position: absolute; width: min(84cqw, 84cqh); aspect-ratio: 1; border-radius: 50%; }
+.dc-rings {
+  border: 1.5px solid color-mix(in srgb, var(--c) 70%, transparent);
+  background:
+    repeating-radial-gradient(circle, transparent 0 17%, color-mix(in srgb, var(--c) 45%, transparent) 17% calc(17% + 1.5px)),
+    linear-gradient(var(--c), var(--c)) 50% 0 / 1px 100% no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 50% / 100% 1px no-repeat;
+  opacity: 0.55;
+}
+.dc-sweep {
+  background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--c) 75%, transparent) 100%);
+  animation: dc-spin 4s linear infinite;
+  will-change: transform;
+}
+.dc-blip { position: absolute; left: var(--x); top: var(--y); width: 2.6cqmin; height: 2.6cqmin; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); opacity: 0; animation: dc-blip 4.4s linear infinite; animation-delay: var(--d); }
+@keyframes dc-spin { to { transform: rotate(360deg); } }
+@keyframes dc-blip { 0% { opacity: 0; } 6% { opacity: 1; } 70% { opacity: 0; } }
+
+/* heartbeat line: a masked SVG tile, drawn in the tile colour, sliding sideways */
+.dc-pulse { -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+.dc-track {
+  position: absolute; left: 0; top: 18%; width: 200%; height: 64%;
+  background: var(--c);
+  filter: drop-shadow(0 0 6px var(--c));
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'><path d='M0 20 H28 L33 20 L38 5 L45 35 L51 20 H60 L64 15 L68 20 H100' fill='none' stroke='white' stroke-width='2' vector-effect='non-scaling-stroke'/></svg>") 0 0 / 25% 100% repeat-x;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'><path d='M0 20 H28 L33 20 L38 5 L45 35 L51 20 H60 L64 15 L68 20 H100' fill='none' stroke='white' stroke-width='2' vector-effect='non-scaling-stroke'/></svg>") 0 0 / 25% 100% repeat-x;
+  animation: dc-slide 3.2s linear infinite;
+  will-change: transform;
+}
+@keyframes dc-slide { to { transform: translateX(-50%); } }
+
+/* banner: the tile's label with a glitch */
+.dc-banner { display: grid; place-items: center; font-family: var(--mono); }
+.dc-word { position: relative; max-width: 92%; font-size: min(14cqw, 40cqh); font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; text-align: center; line-height: 1.05; text-shadow: 0 0 16px var(--glow); overflow-wrap: anywhere; }
+.dc-word::before, .dc-word::after { content: attr(data-text); position: absolute; inset: 0; opacity: 0; }
+.dc-word::before { color: var(--magenta); animation: dc-glitch-a 5s steps(1) infinite; }
+.dc-word::after { color: var(--accent); animation: dc-glitch-b 5s steps(1) infinite; }
+@keyframes dc-glitch-a { 0%, 90%, 100% { opacity: 0; transform: none; } 91% { opacity: 0.8; transform: translateX(-4%); } 94% { opacity: 0.8; transform: translateX(3%); } 96% { opacity: 0; } }
+@keyframes dc-glitch-b { 0%, 91%, 100% { opacity: 0; transform: none; } 92% { opacity: 0.8; transform: translateX(4%); } 95% { opacity: 0.8; transform: translateX(-3%); } 97% { opacity: 0; } }
+.dc-line { position: absolute; left: 10%; right: 10%; bottom: 14%; height: 1.5px; background: var(--c); box-shadow: 0 0 8px var(--c); opacity: 0.6; }
+
+/* blinking status lights, like a server rack */
+.dc-grid { position: absolute; inset: 14%; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); gap: 12%; }
+.dc-grid i { align-self: center; justify-self: center; width: 70%; aspect-ratio: 1; max-height: 100%; border-radius: 28%; background: var(--c); box-shadow: 0 0 8px var(--c); animation: dc-blink var(--dur) steps(1) infinite; animation-delay: var(--del); }
+@keyframes dc-blink { 0% { opacity: 0.12; } 20% { opacity: 1; } 55% { opacity: 0.3; } 75% { opacity: 0.9; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-hexwrap, .dc-sweep, .dc-blip, .dc-track, .dc-word::before, .dc-word::after, .dc-grid i { animation: none; }
+}

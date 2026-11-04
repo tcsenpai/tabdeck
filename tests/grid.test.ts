@@ -223,3 +223,61 @@ describe("ambient glow flag", () => {
     for (const bad of ["yes", 1, null]) expect(withGlow(bad)).toThrow(ConfigError);
   });
 });
+
+describe("decoration tiles and the per-tile border", () => {
+  const withButton = (extra: object) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    c.pages[0].buttons = [{ ...c.pages[0].buttons[0], col: 0, row: 0, w: SUB, h: SUB, ...extra } as PadConfig["pages"][0]["buttons"][0]];
+    return () => validateConfig(c).pages[0].buttons[0];
+  };
+  test("a deco tile is inert, defaults to the clock and to no border", () => {
+    const b = withButton({ kind: "deco", steps: [{ type: "shell", cmd: "echo x", cwd: "", timeout: 5 }], led: "true", style: undefined, border: undefined })();
+    expect(b).toMatchObject({ kind: "deco", style: "clock", border: false, steps: [], hold: [], led: "", toggle: false, confirm: false });
+  });
+  test("deco styles are a closed list; other kinds keep their own style rules", () => {
+    for (const s of ["clock", "hex", "radar", "pulse", "banner", "leds"]) expect(withButton({ kind: "deco", style: s })().style).toBe(s);
+    expect(withButton({ kind: "deco", style: "mirror" })).toThrow(ConfigError); // a visualizer style
+    expect(withButton({ kind: "viz", style: "radar" })).toThrow(ConfigError); // a decoration style
+  });
+  test("border defaults to on for keys, can be turned off on any kind, and must be a boolean", () => {
+    expect(withButton({ border: undefined })().border).toBe(true);
+    expect(withButton({ border: false })().border).toBe(false);
+    expect(withButton({ kind: "station", station: "virgin", border: false })().border).toBe(false);
+    expect(withButton({ border: "no" })).toThrow(ConfigError);
+  });
+  test("the tablet sees kind, style and border", () => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    Object.assign(c.pages[0].buttons[0], { kind: "deco", style: "radar", border: false });
+    expect(publicView(validateConfig(c)).pages[0].buttons[0]).toMatchObject({ kind: "deco", style: "radar", border: false });
+  });
+});
+
+describe("per-app key variants", () => {
+  const sh = (cmd: string) => ({ type: "shell", cwd: "", timeout: 5, cmd });
+  const withVariants = (variants: unknown, extra: object = {}) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    c.pages[0].buttons = [{ ...c.pages[0].buttons[0], col: 0, row: 0, w: SUB, h: SUB, variants, ...extra } as unknown as PadConfig["pages"][0]["buttons"][0]];
+    return () => validateConfig(c);
+  };
+  test("kept with defaults filled in; none by default", () => {
+    expect(validateConfig(seedConfig()).pages[0].buttons.every((b) => b.variants.length === 0)).toBe(true);
+    const v = withVariants([{ app: "us.zoom.xos", label: "Mute", steps: [sh("echo z")] }])().pages[0].buttons[0].variants[0];
+    expect(v).toMatchObject({ app: "us.zoom.xos", mode: "is", url: "", title: "", hidden: false, label: "Mute", color: "slate", confirm: false, hold: [] });
+    expect(v.steps).toHaveLength(1);
+  });
+  test("an app is required; mode, colour, steps and the count are checked", () => {
+    for (const bad of [{ app: "" }, {}, { app: "x", mode: "regex" }, { app: "x", color: "puce" }, { app: "x", steps: [{ type: "nope" }] }, "str"]) {
+      expect(withVariants([bad])).toThrow(ConfigError);
+    }
+    expect(withVariants(Array.from({ length: 9 }, () => ({ app: "x" })))).toThrow(ConfigError);
+  });
+  test("only plain keys have variants", () => {
+    expect(withVariants([{ app: "x" }], { kind: "fader", fader: { get: "", set: "echo" } })().pages[0].buttons[0].variants).toEqual([]);
+  });
+  test("the tablet gets the look of each variant, never the app or the commands", () => {
+    const view = publicView(withVariants([{ app: "Secret", url: "private.example", label: "Z", steps: [sh("echo hidden-cmd")], hold: [sh("echo h")], hidden: false }])());
+    const pv = view.pages[0].buttons[0].variants[0];
+    expect(pv).toEqual({ label: "Z", icon: "", color: "slate", confirm: false, showOutput: false, hasHold: true, hidden: false });
+    expect(JSON.stringify(view)).not.toMatch(/Secret|private\.example|hidden-cmd/);
+  });
+});

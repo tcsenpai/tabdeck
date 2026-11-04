@@ -2,6 +2,7 @@
 import { t } from "/assets/i18n.js";
 import { radioInner, stationOut } from "/assets/radio.js";
 import { vizInner, vizPreview } from "/assets/viz.js";
+import { decoInner } from "/assets/deco.js";
 
 export const COLORS = ["slate", "red", "orange", "amber", "green", "teal", "blue", "violet", "pink"];
 
@@ -33,7 +34,7 @@ export async function api(path, opts = {}) {
 // The grid is measured in units; a classic tile is SUB×SUB units, so keys resize in quarter-tile
 // steps. SUB and MIN_SIZE mirror lib/config.ts (the server validates them).
 export const SUB = 2;
-export const MIN_SIZE = { button: [1, 1], station: [1, 1], fader: [2, 1], radio: [4, 2], viz: [2, 1] };
+export const MIN_SIZE = { button: [1, 1], station: [1, 1], fader: [2, 1], radio: [4, 2], viz: [2, 1], deco: [1, 1] };
 
 export function applyGrid(gridEl, page) {
   gridEl.style.gridTemplateColumns = `repeat(${page.cols * SUB}, minmax(0, 1fr))`;
@@ -47,7 +48,8 @@ export function tileEl(btn) {
   const isRadio = btn.kind === "radio";
   const isStation = btn.kind === "station";
   const isViz = btn.kind === "viz";
-  const bare = isFader || isRadio || isStation || isViz; // no tap action of their own: no hold dot
+  const isDeco = btn.kind === "deco";
+  const bare = isFader || isRadio || isStation || isViz || isDeco; // no tap action of their own: no hold dot
   const hasHold = !bare && (btn.hasHold ?? btn.hold?.length > 0);
   const hasLed = isStation || (!bare && (btn.hasLed ?? (!!btn.led?.trim() || !!btn.toggle))); // a station tile's LED = "playing"
   const dot = hasHold ? h("span", { class: "hdot", title: t("tile.hold") }) : null;
@@ -59,16 +61,16 @@ export function tileEl(btn) {
   const el = h(
     bare ? "div" : "button",
     {
-      class: "tile" + (isFader ? " fader" : "") + (isRadio ? " radio" : "") + (isStation ? " station" : "") + (isViz ? " viz" : ""),
+      class: "tile" + (isFader ? " fader" : "") + (isRadio ? " radio" : "") + (isStation ? " station" : "") + (isViz ? " viz" : "") + (isDeco ? " deco" : "") + (btn.border === false ? " nob" : ""),
       type: bare ? undefined : "button",
-      role: isFader ? "slider" : isRadio ? "group" : isStation ? "button" : isViz ? "img" : undefined,
+      role: isFader ? "slider" : isRadio ? "group" : isStation ? "button" : isViz || isDeco ? "img" : undefined,
       tabindex: isStation ? "0" : undefined,
       dataset: { color: btn.color, id: btn.id },
       "aria-label": btn.label || btn.icon || t("tile.button"),
     },
     h("span", { class: "box" },
       h("span", { class: "f front" },
-        isRadio ? radioInner(h) : isViz ? vizInner(h, btn.style) : h("span", { class: "in" }, icon, label, track, isFader ? h("span", { class: "val" }, "–") : null, icon ? null : dot),
+        isRadio ? radioInner(h) : isViz ? vizInner(h, btn.style) : isDeco ? decoInner(h, btn.style, btn.label) : h("span", { class: "in" }, icon, label, track, isFader ? h("span", { class: "val" }, "–") : null, icon ? null : dot),
         hasLed ? h("span", { class: "led" }) : null,
         isStation ? stationOut(h) : null),
       h("span", { class: "f back" }),

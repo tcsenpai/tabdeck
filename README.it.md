@@ -171,6 +171,27 @@ server; se non si sente nulla il tile scrive «NESSUN AUDIO (o consenti la Regis
 sistema)», perché silenzio e permesso negato sono indistinguibili. `VIZ_HELPER="comando"`
 sostituisce l'helper (per esempio `tools/sysaudio --test-tone` per un segnale dimostrativo).
 
+### Varianti di un tasto per app
+
+«Se Zoom è in primo piano, questo tasto diventa Muto». Nell'ispettore di un tasto aggiungi
+varianti: un'app (nome o bundle id, esatto o «contiene», eventualmente ristretto da URL del
+browser o titolo finestra) e per lei etichetta, icona, colore, conferma, azioni, azioni da
+pressione lunga, oppure solo **nascondere il tasto**. Vince la prima variante che corrisponde;
+senza corrispondenza il tasto resta com'è. Più tasti possono reagire alla stessa app, quindi un
+posto sul pad può essere un pulsante diverso per ogni app. LED e «ricorda acceso/spento» restano al
+tasto base. Al tablet si dice solo quale variante mostrare, mai l'app: al tocco dichiara quale
+variante sta mostrando e il Mac la esegue solo se è ancora quella dell'app in primo piano
+(altrimenti «The app in front changed» e il tile si aggiorna). Usa lo stesso permesso Automazione
+delle pagine automatiche.
+
+### Tile decorativi e bordo per tile
+
+Tile solo da vedere (tipo «Decorazione»): orologio con data, dump esadecimale che scorre, radar,
+linea del battito, banner con glitch (mostra il testo del tile), luci di stato da rack. Al tocco
+non fanno nulla; si animano solo con transform/opacity. Partono senza bordo. Ogni tile ha
+l'interruttore **Bordo**: spento toglie cornice e corpo 3D e lascia solo il contenuto sospeso sullo
+sfondo (vale per tasti, cursori, radio, ...).
+
 ### Radio preferite (radio-browser.info)
 
 Dall'editor (niente selezionato → «Radio preferite») cerchi nell'elenco della comunità
@@ -298,6 +319,8 @@ docs/radio-browser-notes.md  cosa si è scoperto sull'API dell'elenco
 public/pad.*       pad per il tablet
 public/edit.*      editor (edit-auto/-bar/-radio/-record.js: i suoi pannelli)
 public/bar.js      indicatori info sul pad
+public/deco.js     tile decorativi (markup); deco.css gli stili
+public/edit-variants.js  pannello delle varianti per app
 public/templates.js  pagine di partenza per le pagine automatiche
 public/common.js   DOM helper + tile condiviso pad/editor
 public/i18n.js     traduzioni (en/it)
