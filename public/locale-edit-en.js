@@ -226,6 +226,7 @@ export default {
   "edit.var.up": "Earlier (higher priority)",
   "edit.var.down": "Later",
   "edit.var.remove": "Remove variant",
+  "edit.var.full": "At most {max} variants per key.",
   "edit.rb.title": "Radio favourites",
   "edit.rb.hint": "Search internet radio stations and keep your favourites: they join the radio widget's ‹ › and the station tile's list.",
   "edit.rb.q": "Station name",

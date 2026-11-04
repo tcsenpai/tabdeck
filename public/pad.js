@@ -199,7 +199,8 @@ function swapVariants() {
   for (const b of page().buttons) {
     if (!b.variants?.length) continue;
     const el = gridEl.querySelector(`.tile[data-id="${CSS.escape(b.id)}"]`);
-    if (el && el._vi !== variantOf(b)) el.replaceWith(buildTile(b));
+    // A tile that is running a press keeps its node: the result flash and toast belong to it. The next state refresh swaps it.
+    if (el && el.dataset.state !== "running" && el._vi !== variantOf(b)) el.replaceWith(buildTile(b));
   }
 }
 function render() {

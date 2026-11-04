@@ -6,6 +6,7 @@ import { COLORS, h } from "/assets/common.js";
 import { t } from "/assets/i18n.js";
 
 let presets = null;
+const MAX_VARIANTS = 8; // LIMITS.variants in lib/config.ts
 
 // ctx: { btn, api, touch, rerender, field, text, stepsSection }
 export function variantsSection(ctx) {
@@ -15,6 +16,7 @@ export function variantsSection(ctx) {
   const say = (s) => { msg.textContent = s; };
 
   const add = (extra = {}) => {
+    if (list.length >= MAX_VARIANTS) return say(t("edit.var.full", { max: MAX_VARIANTS }));
     list.push({
       app: "", mode: "is", url: "", title: "", hidden: false,
       label: btn.label, icon: btn.icon, color: btn.color, confirm: false, showOutput: false, steps: [], hold: [], ...extra,

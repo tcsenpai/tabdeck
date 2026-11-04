@@ -226,6 +226,7 @@ export default {
   "edit.var.up": "Prima (più priorità)",
   "edit.var.down": "Dopo",
   "edit.var.remove": "Rimuovi variante",
+  "edit.var.full": "Al massimo {max} varianti per tasto.",
   "edit.rb.title": "Radio preferite",
   "edit.rb.hint": "Cerca stazioni radio su internet e tieni le preferite: entrano nei ‹ › del widget radio e nell'elenco dei tasti stazione.",
   "edit.rb.q": "Nome della stazione",
