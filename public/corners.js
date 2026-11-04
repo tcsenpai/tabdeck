@@ -24,15 +24,32 @@ let lastFrame = -Infinity;
 let next = 0; // the corner that gets the next flash
 let base = 0; // eased level
 let levelNow = 0;
+// Sensitivity 0–100 (50 = normal) becomes a gain of 0.1 … 1 … 10 applied to what the microphone hears.
+let gain = 1;
+export function setSensitivity(s) {
+  gain = Math.pow(10, (clamp01Num(s, 50) - 50) / 50);
+}
+function clamp01Num(v, d) {
+  return Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : d;
+}
 const flash = [0, 0, 0, 0];
+// Anything else that wants the microphone frames (the sound-reactive decoration tiles): fn(level, onset), both 0..1.
+const listeners = new Set();
+export function subscribeMic(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
 
 const clamp01 = (x) => Math.min(1, Math.max(0, Number.isFinite(x) ? x : 0));
 
-function onFrame(values) {
+function onFrame(values, applyGain = true) {
   if (!Array.isArray(values)) return;
-  levelNow = clamp01(values[0]);
-  const onset = clamp01(values[1]);
+  const g = applyGain ? gain : 1; // the tablet's own analysis has already applied it
+  levelNow = clamp01(values[0] * g);
+  const onset = clamp01(values[1] * g);
   lastFrame = performance.now();
+  for (const fn of listeners) fn(levelNow, onset);
+  if (!root) return; // only the listeners are using the microphone
   if (onset >= ONSET_MIN) {
     flash[next] = Math.max(flash[next], 0.35 + 0.65 * onset);
     next = (next + 1) % 4;
@@ -41,6 +58,19 @@ function onFrame(values) {
     last = lastFrame;
     raf = requestAnimationFrame(tick);
   }
+}
+
+// Shows or hides the four corner lights; the microphone itself is switched with setCorners().
+export function setCornersVisible(on) {
+  if (on === !!root) return;
+  if (on) return build();
+  cancelAnimationFrame(raf);
+  raf = 0;
+  root.remove();
+  root = null;
+  corners = [];
+  flash.fill(0);
+  base = 0;
 }
 
 function tick(now) {
@@ -130,16 +160,16 @@ async function openTablet() {
     full.getFloatTimeDomainData(fb);
     high.getFloatTimeDomainData(hb);
     const db = 20 * Math.log10(Math.max(1e-5, rms(fb)));
-    const level = clamp01((db + 60) / 45); // -60..-15 dBFS
-    const h = rms(hb);
+    const level = clamp01((db + 20 * Math.log10(gain) + 60) / 45); // -60..-15 dBFS, shifted by the gain
+    const h = rms(hb) * gain; // the gain also lowers the silence floor, so a weak tablet microphone still triggers
     const now = performance.now();
     let onset = 0;
-    if (now >= quietUntil && h > FLOOR && h > avg * 2.2 + FLOOR) {
+    if (now >= quietUntil && h > FLOOR && h > avg * 1.8 + FLOOR) {
       onset = clamp01((h - avg) / 0.08);
       quietUntil = now + REFRACTORY_MS;
     }
     avg += (h - avg) * 0.05;
-    onFrame([level, onset]);
+    onFrame([level, onset], false);
   }, TICK_MS);
   mic = { stream, ctx, timer };
   if (mode !== "tablet") closeTablet(); // switched off while the permission prompt was open
@@ -160,16 +190,15 @@ export async function setCorners(next_, onError = () => {}) {
   closeTablet();
   mode = next_;
   if (!mode) {
-    cancelAnimationFrame(raf);
-    raf = 0;
-    root?.remove();
-    root = null;
-    corners = [];
-    flash.fill(0);
-    base = levelNow = 0;
+    levelNow = 0;
+    // Let the sound-reactive tiles settle: a few empty frames, so peaks and speeds decay to rest.
+    let n = 0;
+    const settle = setInterval(() => {
+      for (const fn of listeners) fn(0, 0);
+      if (++n >= 15 || mode) clearInterval(settle);
+    }, 50);
     return;
   }
-  if (!root) build();
   if (mode === "mac") return openMac();
   try {
     await openTablet();

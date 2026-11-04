@@ -4,7 +4,8 @@ import { mountRadio, mountStation, resetTiles, setFavs, syncRadio } from "/asset
 import { mountViz, resetViz } from "/assets/viz.js";
 import { setBar } from "/assets/bar.js";
 import { setGlow } from "/assets/glow.js";
-import { setCorners } from "/assets/corners.js";
+import { setCorners, setCornersVisible, setSensitivity, subscribeMic } from "/assets/corners.js";
+import { mountDeco, resetDeco } from "/assets/deco.js";
 import { setFx } from "/assets/fx.js";
 import en from "/assets/locale-pad-en.js";
 import it from "/assets/locale-pad-it.js";
@@ -189,6 +190,7 @@ function buildTile(b) {
   if (b.kind === "radio") mountRadio(el);
   else if (b.kind === "station") mountStation(el, b.station);
   else if (b.kind === "viz") mountViz(el);
+  else if (b.kind === "deco") mountDeco(el, subscribeMic);
   else if (b.kind === "fader") wireFader(v, el);
   else if (b.kind === "button") wireButton(v, el);
   el._vi = v._vi;
@@ -212,6 +214,7 @@ function render() {
   applyGrid(gridEl, p);
   resetTiles(); // the previous page's station tiles are about to be replaced
   resetViz();
+  resetDeco();
   const tiles = p.buttons.map(buildTile);
   gridEl.replaceChildren(
     ...(tiles.length
@@ -324,9 +327,11 @@ const glowOn = () => !!state.cfg?.glow && localStorage.getItem("pad.glow") === "
 // cycles off → this tablet's microphone → the Mac's microphone → off.
 // The pad's HTTPS address (self-signed): the only way to get the tablet's microphone without browser flags.
 const httpsUrl = () => `https://${location.hostname}:${state.cfg?.https || 8443}/`;
+// The microphone is wanted when the corners are offered or the pad has a sound-reactive decoration tile.
+const micWanted = () => !!state.cfg?.micCorners || !!state.cfg?.pages.some((p) => p.buttons.some((b) => b.kind === "deco" && b.style?.endsWith("mic")));
 const micMode = () => {
   const m = localStorage.getItem("pad.mic");
-  if (!state.cfg?.micCorners || !(m === "tablet" || m === "mac" || m === "on")) return "";
+  if (!micWanted() || !(m === "tablet" || m === "mac" || m === "on")) return "";
   return state.cfg.micSource || (m === "mac" ? "mac" : "tablet");
 };
 // Overlay effects (CRT, glitch, grain...): chosen in the editor, on by default, one switch per tablet.
@@ -347,9 +352,11 @@ function paintGlow() {
   $("glow").classList.toggle("on", glowOn());
   setGlow(glowOn());
   document.body.classList.toggle("mic-on", !!micMode()); // the glow gives way a little to the corners
-  $("mic").hidden = !state.cfg?.micCorners;
+  $("mic").hidden = !micWanted();
   $("mic").classList.toggle("on", !!micMode());
   $("mic").dataset.src = micMode();
+  setSensitivity(state.cfg?.micSensitivity ?? 50);
+  setCornersVisible(!!state.cfg?.micCorners && !!micMode());
   setCorners(micMode(), (code) => {
     localStorage.removeItem("pad.mic");
     paintGlow();

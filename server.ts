@@ -46,6 +46,8 @@ const viz = createViz({ dir: DATA_DIR, helper: process.env.VIZ_HELPER?.trim() ? 
 // the helper (tests / `tools/mic --test-script`, which never opens the microphone).
 const mic = createMic({ dir: DATA_DIR, helper: process.env.MIC_HELPER?.trim() ? process.env.MIC_HELPER.trim().split(/\s+/) : undefined });
 const hasViz = () => store.config.glow || store.config.pages.some((p) => p.buttons.some((b) => b.kind === "viz")); // the ambient glow or a visualizer tile
+// The microphone stream is for the mic corners or a sound-reactive decoration tile (styles ending in "mic").
+const hasMic = () => store.config.micCorners || store.config.pages.some((p) => p.buttons.some((b) => b.kind === "deco" && b.style.endsWith("mic")));
 const hasVariants = () => store.config.pages.some((p) => p.buttons.some((b) => b.variants.length));
 // Which variant of a key is active for the app in front (-1 = the base key).
 const variantIndex = (btn: Button, ctx: AppContext): number => {
@@ -197,7 +199,7 @@ async function handle(req: Request, srv: Server): Promise<Response> {
         return sseResponse(viz, req.signal);
       }
       if (method === "GET" && path === "/api/mic") {
-        if (!store.config.micCorners) return json({ error: "Mic corners are not enabled on this pad" }, 404);
+        if (!hasMic()) return json({ error: "No mic corners or sound-reactive tile on this pad" }, 404);
         srv.timeout(req, 0);
         return sseResponse(mic, req.signal);
       }

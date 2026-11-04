@@ -42,6 +42,11 @@ export function glowSection({ cfg, touch }) {
       h("option", { value: "", selected: !cfg.micSource }, t("edit.mic.source.choice")),
       h("option", { value: "tablet", selected: cfg.micSource === "tablet" }, t("edit.mic.source.tablet")),
       h("option", { value: "mac", selected: cfg.micSource === "mac" }, t("edit.mic.source.mac")))),
+    field(t("edit.mic.sens", { v: cfg.micSensitivity }), h("input", {
+      type: "range", min: 0, max: 100, step: 1, value: cfg.micSensitivity, "aria-label": t("edit.mic.sens", { v: cfg.micSensitivity }),
+      oninput: (e) => { cfg.micSensitivity = Number(e.target.value); e.target.previousSibling.textContent = t("edit.mic.sens", { v: cfg.micSensitivity }); touch(); },
+    })),
+    h("p", { class: "hint" }, t("edit.mic.sens.hint")),
   );
 }
 

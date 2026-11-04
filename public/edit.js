@@ -761,6 +761,7 @@ function renderInspector() {
     field(t("edit.deco.style"), h("select", { "aria-label": t("edit.deco.style"), onchange: (e) => { btn.style = e.target.value; touch(); preview(); } },
       ...DECO_STYLES.map((s) => h("option", { value: s, selected: (btn.style || "clock") === s }, t(`edit.deco.style.${s}`))))),
     field(t("edit.deco.label"), text(btn, "label", { after: preview, max: 40 })),
+    ...(String(btn.style).endsWith("mic") ? [h("p", { class: "hint" }, t("edit.deco.mic.hint"))] : []),
     h("div", { class: "field" }, h("span", {}, t("edit.insp.color")),
       h("div", { class: "swatches" }, ...COLORS.map((c) =>
         h("button", { class: "swatch", type: "button", dataset: { color: c }, title: c, "aria-pressed": String(btn.color === c), onclick: () => { btn.color = c; touch(); preview(); renderInspector(); } })))),

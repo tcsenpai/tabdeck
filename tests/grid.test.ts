@@ -235,7 +235,7 @@ describe("decoration tiles and the per-tile border", () => {
     expect(b).toMatchObject({ kind: "deco", style: "clock", border: false, steps: [], hold: [], led: "", toggle: false, confirm: false });
   });
   test("deco styles are a closed list; other kinds keep their own style rules", () => {
-    for (const s of ["clock", "hex", "radar", "pulse", "banner", "leds"]) expect(withButton({ kind: "deco", style: s })().style).toBe(s);
+    for (const s of ["clock", "hex", "radar", "pulse", "banner", "leds", "hexmic", "rackmic"]) expect(withButton({ kind: "deco", style: s })().style).toBe(s);
     expect(withButton({ kind: "deco", style: "mirror" })).toThrow(ConfigError); // a visualizer style
     expect(withButton({ kind: "viz", style: "radar" })).toThrow(ConfigError); // a decoration style
   });
@@ -322,5 +322,19 @@ describe("forced microphone source", () => {
     for (const ok of ["", "tablet", "mac"]) expect(withSrc(ok)().micSource).toBe(ok);
     expect(publicView(withSrc("mac")()).micSource).toBe("mac");
     for (const bad of ["both", 1, null, true]) expect(withSrc(bad)).toThrow(ConfigError);
+  });
+});
+
+describe("mic sensitivity", () => {
+  const withSens = (v: unknown) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { micSensitivity: unknown }).micSensitivity = v;
+    return () => validateConfig(c);
+  };
+  test("0–100 integer, 50 by default, visible to the tablet", () => {
+    expect(validateConfig(seedConfig()).micSensitivity).toBe(50);
+    expect(withSens(90)().micSensitivity).toBe(90);
+    expect(publicView(withSens(10)()).micSensitivity).toBe(10);
+    for (const bad of [-1, 101, 5.5, "high", null]) expect(withSens(bad)).toThrow(ConfigError);
   });
 });

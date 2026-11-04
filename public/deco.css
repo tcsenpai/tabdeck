@@ -72,6 +72,10 @@
 .dc-grid i { align-self: center; justify-self: center; width: 70%; aspect-ratio: 1; max-height: 100%; border-radius: 28%; background: var(--c); box-shadow: 0 0 8px var(--c); animation: dc-blink var(--dur) steps(1) infinite; animation-delay: var(--del); }
 @keyframes dc-blink { 0% { opacity: 0.12; } 20% { opacity: 1; } 55% { opacity: 0.3; } 75% { opacity: 0.9; } }
 
+/* Sound-reactive tiles, once mounted on the pad: the JS drives them, so the idle animations step aside. */
+.dc-mic.live .dc-grid i { animation: none; opacity: 0.12; transition: opacity 0.08s linear; }
+.dc-mic.live.dc-hex .dc-hexcol { opacity: calc(0.35 + var(--lvl, 0) * 0.65); }
+
 @media (prefers-reduced-motion: reduce) {
   .dc-hexwrap, .dc-sweep, .dc-blip, .dc-track, .dc-word::before, .dc-word::after, .dc-grid i { animation: none; }
 }
