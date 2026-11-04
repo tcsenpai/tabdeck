@@ -33,7 +33,7 @@ export async function api(path, opts = {}) {
 // The grid is measured in units; a classic tile is SUB×SUB units, so keys resize in quarter-tile
 // steps. SUB and MIN_SIZE mirror lib/config.ts (the server validates them).
 export const SUB = 2;
-export const MIN_SIZE = { button: [1, 1], station: [1, 1], fader: [2, 1], radio: [4, 2] };
+export const MIN_SIZE = { button: [1, 1], station: [1, 1], fader: [2, 1], radio: [4, 2], viz: [2, 1] };
 
 export function applyGrid(gridEl, page) {
   gridEl.style.gridTemplateColumns = `repeat(${page.cols * SUB}, minmax(0, 1fr))`;
