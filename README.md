@@ -129,7 +129,7 @@ Terminal), because launchd starts the process.
   overflowing. A pad saved by an earlier version is migrated on first start with the same
   layout, and the original is kept as `data/pad.json.v1.bak`.
 - **Visualizer tile:** a spectrum of whatever the Mac is playing (any app), drawn on the tablet
-  like the old media-player visualizations: 32 bars with falling peak caps, resizable, several
+  like the old media-player visualizations, in five styles you pick per tile (bars with falling peak caps, mirror, segmented blocks, wave, ring), resizable, several
   allowed. `tools/sysaudio.swift` captures the system output with a Core Audio *process tap*
   (no virtual audio driver) and runs an FFT; the server compiles it on first use (needs the Xcode
   Command Line Tools) and starts it only while a tablet is showing the tile, stopping it a few

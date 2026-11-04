@@ -36,3 +36,11 @@
 }
 .vz-msg:empty { display: none; }
 .tile[data-vz="error"] .vz-msg { color: var(--err); }
+.vz-cv { display: block; width: 100%; height: 100%; }
+/* mirror: bars grow from the centre line, caps ride the top edge */
+.vz-s-mirror .vz-bar { transform-origin: center; }
+/* blocks: a static segment mask on the column; the bar scales behind it */
+.vz-s-blocks .vz-col {
+  -webkit-mask-image: repeating-linear-gradient(to top, #000 0 6%, transparent 6% 9%);
+  mask-image: repeating-linear-gradient(to top, #000 0 6%, transparent 6% 9%);
+}

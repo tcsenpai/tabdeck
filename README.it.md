@@ -161,7 +161,7 @@ viene migrato al primo avvio con la stessa disposizione, e l'originale resta in
 ### Tile visualizzatore (audio di sistema)
 
 Lo spettro di tutto ciò che il Mac sta riproducendo (qualsiasi app), disegnato sul tablet come
-nei vecchi visualizzatori dei lettori multimediali: 32 barre con i picchi che scendono,
+nei vecchi visualizzatori dei lettori multimediali, in cinque stili a scelta per tile (barre con i picchi che scendono, specchio, blocchi, onda, anello),
 ridimensionabile, se ne possono mettere più d'uno. `tools/sysaudio.swift` cattura l'uscita di
 sistema con un *process tap* di Core Audio (nessun driver audio virtuale) e fa una FFT; il
 server lo compila al primo uso (servono gli Xcode Command Line Tools) e lo avvia solo mentre un

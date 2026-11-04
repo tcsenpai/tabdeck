@@ -68,7 +68,7 @@ export function tileEl(btn) {
     },
     h("span", { class: "box" },
       h("span", { class: "f front" },
-        isRadio ? radioInner(h) : isViz ? vizInner(h) : h("span", { class: "in" }, icon, label, track, isFader ? h("span", { class: "val" }, "–") : null, icon ? null : dot),
+        isRadio ? radioInner(h) : isViz ? vizInner(h, btn.style) : h("span", { class: "in" }, icon, label, track, isFader ? h("span", { class: "val" }, "–") : null, icon ? null : dot),
         hasLed ? h("span", { class: "led" }) : null,
         isStation ? stationOut(h) : null),
       h("span", { class: "f back" }),

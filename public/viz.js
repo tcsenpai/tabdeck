@@ -2,34 +2,154 @@
 // The Mac side captures the system output, runs an FFT and sends ~20 frames/s of band levels.
 // The stream is open only while a tile is on screen AND the tab is visible, so an unused or
 // backgrounded tile costs nothing (the helper on the Mac stops a few seconds after the last viewer).
-// Only transform is animated: bars are scaled, peak caps are translated.
+// Styles (like cava's): bars, mirror, blocks (DOM bars, only transform animates) and wave, ring
+// (one small canvas each, drawn at ~20 fps, device pixel ratio 1 to stay light on weak tablets).
 import { t } from "/assets/i18n.js";
 
+export const STYLES = ["bars", "mirror", "blocks", "wave", "ring"];
 const BANDS = 32; // matches the server helper's default
 const PEAK_FALL = 0.025; // per frame
+const CANVAS_STYLES = ["wave", "ring"];
 
 // Markup shared by the pad and the editor preview. `h` is common.js's DOM helper.
-export function vizInner(h) {
-  const cols = Array.from({ length: BANDS }, () =>
-    h("span", { class: "vz-col" }, h("i", { class: "vz-bar" }), h("b", { class: "vz-cap" })));
-  return h("span", { class: "in vz" }, h("span", { class: "vz-bars" }, ...cols), h("span", { class: "vz-msg" }));
+export function vizInner(h, style) {
+  const s = STYLES.includes(style) ? style : "bars";
+  const body = CANVAS_STYLES.includes(s)
+    ? h("canvas", { class: "vz-cv" })
+    : h("span", { class: "vz-bars" }, ...Array.from({ length: BANDS }, () =>
+        h("span", { class: "vz-col" }, h("i", { class: "vz-bar" }), h("b", { class: "vz-cap" }))));
+  return h("span", { class: `in vz vz-s-${s}` }, body, h("span", { class: "vz-msg" }));
 }
 
-function draw(bars, caps, peaks, values) {
+function makeView(el) {
+  const inner = el.querySelector(".in.vz");
+  const style = STYLES.find((s) => inner?.classList.contains(`vz-s-${s}`)) ?? "bars";
+  const cv = el.querySelector(".vz-cv");
+  return {
+    el,
+    style,
+    bars: [...el.querySelectorAll(".vz-bar")],
+    caps: [...el.querySelectorAll(".vz-cap")],
+    peaks: new Float32Array(BANDS),
+    smooth: new Float32Array(BANDS),
+    cv,
+    ctx: cv ? cv.getContext("2d") : null,
+    color: "",
+  };
+}
+
+function clamp01(x) {
+  return Math.min(1, Math.max(0, Number(x) || 0));
+}
+
+function drawDom(v, values) {
+  const mirror = v.style === "mirror";
   for (let i = 0; i < BANDS; i++) {
-    const v = Math.min(1, Math.max(0, Number(values[i]) || 0));
-    peaks[i] = Math.max(v, peaks[i] - PEAK_FALL);
-    bars[i].style.transform = `scaleY(${Math.max(v, 0.02)})`;
-    caps[i].style.transform = `translateY(${(1 - peaks[i]) * 100}%)`;
+    const n = clamp01(values[i]);
+    v.peaks[i] = Math.max(n, v.peaks[i] - PEAK_FALL);
+    v.bars[i].style.transform = `scaleY(${Math.max(n, 0.02)})`;
+    // mirror grows from the centre line: the caps ride the top edge of the bar
+    v.caps[i].style.transform = mirror ? `translateY(${(1 - v.peaks[i]) * 50}%)` : `translateY(${(1 - v.peaks[i]) * 100}%)`;
   }
 }
 
+function fit(v) {
+  const w = v.cv.clientWidth;
+  const h = v.cv.clientHeight;
+  if (v.cv.width !== w || v.cv.height !== h) {
+    v.cv.width = w;
+    v.cv.height = h;
+  }
+  if (!v.color) v.color = getComputedStyle(v.el).getPropertyValue("--c").trim() || "#00f0ff";
+  return w > 0 && h > 0;
+}
+
+function drawWave(v, values) {
+  if (!fit(v)) return;
+  const { ctx, cv } = v;
+  const w = cv.width;
+  const h = cv.height;
+  ctx.clearRect(0, 0, w, h);
+  for (let i = 0; i < BANDS; i++) v.smooth[i] += (clamp01(values[i]) - v.smooth[i]) * 0.6;
+  const pad = h * 0.08;
+  const y = (i) => h - pad - v.smooth[i] * (h - 2 * pad);
+  const x = (i) => (i / (BANDS - 1)) * w;
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(x(0), y(0));
+    for (let i = 1; i < BANDS; i++) {
+      const mx = (x(i - 1) + x(i)) / 2;
+      const my = (y(i - 1) + y(i)) / 2;
+      ctx.quadraticCurveTo(x(i - 1), y(i - 1), mx, my); // smooth curve through the band levels
+    }
+    ctx.lineTo(x(BANDS - 1), y(BANDS - 1));
+  };
+  path();
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = v.color;
+  ctx.fill();
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = v.color;
+  ctx.lineWidth = Math.max(5, h * 0.05);
+  path();
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = Math.max(2, h * 0.018);
+  ctx.strokeStyle = "#fff";
+  path();
+  ctx.stroke();
+}
+
+function drawRing(v, values) {
+  if (!fit(v)) return;
+  const { ctx, cv } = v;
+  const w = cv.width;
+  const h = cv.height;
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2;
+  const cy = h / 2;
+  const r0 = Math.min(w, h) * 0.24;
+  const rMax = Math.min(w, h) * 0.46 - r0;
+  let bass = 0;
+  for (let i = 0; i < 4; i++) bass += clamp01(values[i]) / 4;
+  ctx.lineCap = "round";
+  ctx.lineWidth = Math.max(2, (Math.PI * 2 * r0) / (BANDS * 2 * 1.9));
+  ctx.strokeStyle = v.color;
+  for (let k = 0; k < BANDS * 2; k++) {
+    const i = k < BANDS ? k : BANDS * 2 - 1 - k; // low bands at the top, mirrored down both sides
+    const n = clamp01(values[i]);
+    const a = (k / (BANDS * 2)) * Math.PI * 2 - Math.PI / 2;
+    const len = 2 + n * rMax;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+    ctx.lineTo(cx + Math.cos(a) * (r0 + len), cy + Math.sin(a) * (r0 + len));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.25 + bass * 0.6; // the inner ring pulses with the bass
+  ctx.lineWidth = Math.max(2, r0 * 0.08);
+  ctx.strokeStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(cx, cy, r0 * (0.9 + bass * 0.12), 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function draw(v, values) {
+  if (v.style === "wave") drawWave(v, values);
+  else if (v.style === "ring") drawRing(v, values);
+  else drawDom(v, values);
+}
+
 // A fixed, pleasant-looking spectrum for the editor preview (no audio there).
+const DEMO = Array.from({ length: BANDS }, (_, i) => 0.25 + 0.55 * Math.abs(Math.sin(i * 0.5)) * (1 - i / (BANDS * 1.6)));
 export function vizPreview(el) {
-  const bars = [...el.querySelectorAll(".vz-bar")];
-  const caps = [...el.querySelectorAll(".vz-cap")];
-  const peaks = new Float32Array(BANDS);
-  draw(bars, caps, peaks, Array.from({ length: BANDS }, (_, i) => 0.25 + 0.55 * Math.abs(Math.sin(i * 0.5)) * (1 - i / (BANDS * 1.6))));
+  const v = makeView(el);
+  // a canvas has no size until the tile is attached to the page
+  if (v.cv) requestAnimationFrame(() => draw(v, DEMO));
+  else draw(v, DEMO);
 }
 
 // ───────────── Live connection ─────────────
@@ -47,7 +167,7 @@ function open() {
   source.onmessage = (e) => {
     try {
       const values = JSON.parse(e.data);
-      for (const v of views) draw(v.bars, v.caps, v.peaks, values);
+      for (const v of views) draw(v, values);
     } catch {}
   };
   source.addEventListener("status", (e) => {
@@ -69,7 +189,7 @@ export function resetViz() {
 }
 
 export function mountViz(el) {
-  views.push({ el, bars: [...el.querySelectorAll(".vz-bar")], caps: [...el.querySelectorAll(".vz-cap")], peaks: new Float32Array(BANDS) });
+  views.push(makeView(el));
   open();
 }
 

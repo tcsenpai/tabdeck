@@ -10,6 +10,8 @@ import { isStation } from "./stations.ts";
 // The pad grid is measured in units: a classic tile is SUB×SUB units, so a key can be resized in
 // quarter-tile steps (1×1 unit = a quarter of a classic tile).
 export const SUB = 2;
+// How a visualizer tile draws the spectrum (see public/viz.js).
+export const VIZ_STYLES = ["bars", "mirror", "blocks", "wave", "ring"] as const;
 // Smallest size per kind, in units. A fader needs room for its track, the radio for its LCD.
 export const MIN_SIZE: Record<"button" | "fader" | "radio" | "station" | "viz", [number, number]> = {
   button: [1, 1],
@@ -59,7 +61,15 @@ export interface Button {
   w: number; // size in grid units (see SUB)
   h: number;
   station: string; // kind "station": the station this tile plays/stops (see lib/stations.ts)
+  style: string; // kind "viz": one of VIZ_STYLES, "" for other kinds
 }
+
+function vizStyle(v: unknown, where: string): string {
+  if (v === undefined || v === "") return "bars";
+  if (typeof v !== "string" || !(VIZ_STYLES as readonly string[]).includes(v)) throw new ConfigError(`${where}: ${VIZ_STYLES.join("/")}`);
+  return v;
+}
+
 export interface Page {
   id: string;
   name: string;
@@ -300,6 +310,7 @@ export function validateConfig(raw: unknown): PadConfig {
         w: width,
         h: height,
         station,
+        style: kind === "viz" ? vizStyle(btn.style, `${bw}.style`) : "",
       };
     });
     return { id: pid, name: str(page.name, `${w}.name`, { required: true, max: 30 }), cols, rows, buttons };
@@ -328,6 +339,7 @@ export interface PublicButton {
   w: number;
   h: number;
   station: string;
+  style: string;
 }
 export interface PublicPage extends Omit<Page, "buttons"> {
   buttons: PublicButton[];
@@ -353,6 +365,7 @@ export function publicView(cfg: PadConfig): { pages: PublicPage[] } {
         w: x.w,
         h: x.h,
         station: x.station,
+        style: x.style,
       })),
     })),
   };
@@ -364,7 +377,7 @@ const b = (
   extra: Partial<Pick<Button, "confirm" | "showOutput" | "hold" | "led" | "toggle">> = {},
 ): Button => ({
   id, col: col * SUB, row: row * SUB, label, icon, color, kind: "button", confirm: false, showOutput: false, steps,
-  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: SUB, h: SUB, station: "", ...extra,
+  hold: [], led: "", toggle: false, fader: { get: "", set: "" }, w: SUB, h: SUB, station: "", style: "", ...extra,
 });
 
 // Example pad on first start: harmless actions, all editable.
@@ -399,7 +412,7 @@ export function seedConfig(): PadConfig {
           ]),
           {
             id: "volume", col: 2 * SUB, row: 1 * SUB, label: "Volume", icon: "🎚️", color: "teal", kind: "fader",
-            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: SUB, h: SUB, station: "",
+            confirm: false, showOutput: false, steps: [], hold: [], led: "", toggle: false, w: SUB, h: SUB, station: "", style: "",
             fader: {
               get: "osascript -e 'output volume of (get volume settings)'",
               set: 'osascript -e "set volume output volume $PAD_VALUE"',

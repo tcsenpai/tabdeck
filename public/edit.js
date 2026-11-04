@@ -1,4 +1,5 @@
 import { api, applyGrid, COLORS, h, MIN_SIZE, SUB, tileEl } from "/assets/common.js";
+import { STYLES } from "/assets/viz.js";
 import { applyStatic, lang, LANGS, register, setLang, t } from "/assets/i18n.js";
 import en from "/assets/locale-edit-en.js";
 import it from "/assets/locale-edit-it.js";
@@ -696,6 +697,8 @@ function renderInspector() {
   const vizSec = () => h("div", { class: "sec" },
     h("h3", {}, t("edit.insp.viz")),
     h("p", { class: "hint" }, t("edit.viz.hint")),
+    field(t("edit.viz.style"), h("select", { "aria-label": t("edit.viz.style"), onchange: (e) => { btn.style = e.target.value; touch(); preview(); } },
+      ...STYLES.map((s) => h("option", { value: s, selected: (btn.style || "bars") === s }, t(`edit.viz.style.${s}`))))),
     h("div", { class: "field" }, h("span", {}, t("edit.insp.color")),
       h("div", { class: "swatches" }, ...COLORS.map((c) =>
         h("button", { class: "swatch", type: "button", dataset: { color: c }, title: c, "aria-pressed": String(btn.color === c), onclick: () => { btn.color = c; touch(); preview(); renderInspector(); } })))),
