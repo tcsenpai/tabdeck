@@ -24,3 +24,14 @@ export function barSection({ cfg, touch, rerender }) {
     }),
   );
 }
+
+// "Ambient glow": lets tablets switch on an edge glow that follows the Mac's audio (the ✦ bar button).
+export function glowSection({ cfg, touch }) {
+  return h("div", { class: "sec" },
+    h("h3", {}, t("edit.glow.title")),
+    h("label", { class: "check" },
+      h("input", { type: "checkbox", checked: cfg.glow, onchange: (e) => { cfg.glow = e.target.checked; touch(); } }),
+      t("edit.glow.enable")),
+    h("p", { class: "hint" }, t("edit.glow.hint")),
+  );
+}

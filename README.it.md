@@ -194,6 +194,16 @@ pulsante **⇆** della barra la sospende su quel tablet. Il confronto avviene su
 arriva solo l'id della pagina. Alla prima lettura macOS chiede una volta di far controllare
 System Events al server (titoli delle finestre) e, per le regole sugli URL, ogni browser.
 
+### Alone ambientale
+
+Luce morbida «Ambilight» ai bordi del pad che segue l'audio del Mac: bassi in basso (magenta),
+medi ai lati (ciano), alti in alto (viola). Attiva «Offri l'alone ambientale» nell'editor
+(niente selezionato), poi ogni tablet lo accende con il pulsante **✦** della barra (se lo
+ricorda). Condivide la cattura audio del visualizzatore e il suo permesso **Registrazione audio
+di sistema**; l'helper gira solo finché un tablet ha l'alone acceso. È fatto di gradienti
+statici di cui si animano opacità e scala ogni frame (nessun filtro blur) e dorme quando il
+Mac è in silenzio.
+
 ### Barra info
 
 Fino a sei piccoli indicatori nella barra in basso del pad (CPU, RAM, batteria, disco, volume,
@@ -228,7 +238,7 @@ Il pad ha manifest e icone. Chrome propone una vera installazione solo in un con
 | --- | --- |
 | `keys`, `text`, azioni Mac con System Events | Accessibilità |
 | Pagine automatiche (titoli finestra, URL dei browser) | Automazione: System Events e ogni browser (chiesto una volta) |
-| Visualizzatore | Registrazione audio di sistema |
+| Visualizzatore, alone ambientale | Registrazione audio di sistema |
 | Registrazione macro | Monitoraggio input |
 | Barra info, radio preferite, profili | nessuno |
 

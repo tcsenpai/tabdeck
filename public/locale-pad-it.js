@@ -15,6 +15,7 @@ export default {
   "pad.radio.tuning": "SINTONIA…",
   "pad.radio.idle": "TOCCA PLAY",
   "pad.auto": "Segui l'app in primo piano sul Mac (tocca per sospendere)",
+  "pad.glow": "Alone ambientale che segue l'audio del Mac",
   "bar.cpu": "CPU", "bar.mem": "RAM", "bar.battery": "BATT", "bar.disk": "DISCO", "bar.volume": "VOL", "bar.uptime": "ATTIV", "bar.load": "CARICO", "bar.clock": "ORA",
   "pad.radio.live": "IN ONDA",
   "pad.viz.starting": "IN ASCOLTO…",

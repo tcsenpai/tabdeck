@@ -13,6 +13,9 @@ All notable changes. Newest first. The project is early and has no tagged releas
 - **Info bar:** up to six system chips (CPU, RAM, battery, disk, volume, uptime, load, clock) in the
   pad's bottom bar, chosen in the editor. Stock macOS tools only, cached for 2 s, polled every 5 s
   while the tab is visible. Hidden on narrow screens.
+- **Ambient glow** ("Ambilight"): edge light that follows the system audio, bass at the bottom, mids at
+  the sides, highs at the top. Offered by the editor, switched on per tablet with the ✦ bar button;
+  rides on the visualizer's stream (`/api/viz` is now also open when the glow is enabled).
 - **Macro recording:** a Record button on every step list. The Mac listens (listen-only event tap,
   `tools/recorder.swift`) to your keys and clicks and the editor appends them as `keys`, `text`,
   `click` and `delay` steps. Needs the macOS Input Monitoring permission for the app that runs the

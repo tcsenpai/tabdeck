@@ -209,3 +209,17 @@ describe("radio favourites", () => {
     expect(base([], `rb:${UUID}`)).toThrow(ConfigError);
   });
 });
+
+describe("ambient glow flag", () => {
+  const withGlow = (glow: unknown) => {
+    const c = structuredClone(seedConfig()) as PadConfig;
+    (c as unknown as { glow: unknown }).glow = glow;
+    return () => validateConfig(c);
+  };
+  test("off by default, boolean only, visible to the tablet", () => {
+    expect(validateConfig(seedConfig()).glow).toBe(false);
+    expect(withGlow(true)().glow).toBe(true);
+    expect(publicView(withGlow(true)()).glow).toBe(true);
+    for (const bad of ["yes", 1, null]) expect(withGlow(bad)).toThrow(ConfigError);
+  });
+});

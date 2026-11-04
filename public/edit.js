@@ -1,7 +1,7 @@
 import { api, applyGrid, COLORS, h, MIN_SIZE, SUB, tileEl } from "/assets/common.js";
 import { STYLES } from "/assets/viz.js";
 import { autoSection } from "/assets/edit-auto.js";
-import { barSection } from "/assets/edit-bar.js";
+import { barSection, glowSection } from "/assets/edit-bar.js";
 import { recordControl } from "/assets/edit-record.js";
 import { radioSection } from "/assets/edit-radio.js";
 import { applyStatic, lang, LANGS, register, setLang, t } from "/assets/i18n.js";
@@ -697,6 +697,7 @@ function renderInspector() {
       h("p", { class: "insp-empty" }, t("edit.insp.empty")),
       autoSection({ cfg: S.cfg, api, touch, rerender: renderAll, newId, currentPage: page }),
       barSection({ cfg: S.cfg, touch, rerender: renderAll }),
+      glowSection({ cfg: S.cfg, touch }),
       radioSection({ cfg: S.cfg, api, touch, rerender: renderAll }),
     );
     return;

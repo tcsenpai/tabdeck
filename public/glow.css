@@ -1,0 +1,38 @@
+/* Ambient glow: soft light at the pad's edges that follows the system audio (public/glow.js).
+   Each part is a static radial gradient; only its opacity and transform change. No blur filter. */
+.glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0; /* above the neon floor (-2), under the pad (1) */
+  pointer-events: none;
+  contain: strict;
+  overflow: hidden;
+}
+.glow i {
+  position: absolute;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.gl-b { /* bass */
+  left: -10%; right: -10%; bottom: 0; height: 58%;
+  background: radial-gradient(ellipse 62% 100% at 50% 100%, color-mix(in srgb, var(--magenta) 90%, transparent), transparent 72%);
+  transform-origin: 50% 100%;
+}
+.gl-t { /* highs */
+  left: -10%; right: -10%; top: 0; height: 46%;
+  background: radial-gradient(ellipse 62% 100% at 50% 0%, color-mix(in srgb, #8a5cff 90%, transparent), transparent 72%);
+  transform-origin: 50% 0%;
+}
+.gl-l, .gl-r { /* mids */
+  top: -10%; bottom: -10%; width: 40%;
+}
+.gl-l {
+  left: 0;
+  background: radial-gradient(ellipse 100% 62% at 0% 50%, color-mix(in srgb, var(--accent) 90%, transparent), transparent 72%);
+  transform-origin: 0% 50%;
+}
+.gl-r {
+  right: 0;
+  background: radial-gradient(ellipse 100% 62% at 100% 50%, color-mix(in srgb, var(--accent) 90%, transparent), transparent 72%);
+  transform-origin: 100% 50%;
+}

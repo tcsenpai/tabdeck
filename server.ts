@@ -39,7 +39,7 @@ const fromDirectory = async <T>(p: Promise<T>): Promise<T | Response> => {
 // System-audio visualizer: the helper only runs while a browser is watching. VIZ_HELPER="cmd args"
 // replaces it (tests / `tools/sysaudio --test-tone`).
 const viz = createViz({ dir: DATA_DIR, helper: process.env.VIZ_HELPER?.trim() ? process.env.VIZ_HELPER.trim().split(/\s+/) : undefined });
-const hasViz = () => store.config.pages.some((p) => p.buttons.some((b) => b.kind === "viz"));
+const hasViz = () => store.config.glow || store.config.pages.some((p) => p.buttons.some((b) => b.kind === "viz")); // the ambient glow or a visualizer tile
 const frontmost = createContext(); // which app is in front on the Mac (automatic pages, editor "detect")
 const info = createInfo();
 // RECORDER_HELPER replaces the compiled helper's argv (tests: `recorder --test-script`, which never touches the input tap).
@@ -173,7 +173,7 @@ const server = Bun.serve({
         return json(out);
       }
       if (method === "GET" && path === "/api/viz") {
-        if (!hasViz()) return json({ error: "No visualizer on this pad" }, 404);
+        if (!hasViz()) return json({ error: "No visualizer or glow on this pad" }, 404);
         srv.timeout(req, 0); // a long-lived stream: the default idle timeout would cut it
         return sseResponse(viz, req.signal);
       }

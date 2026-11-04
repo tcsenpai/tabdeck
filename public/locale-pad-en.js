@@ -15,6 +15,7 @@ export default {
   "pad.radio.tuning": "TUNING…",
   "pad.radio.idle": "TAP PLAY",
   "pad.auto": "Follow the app in front on the Mac (tap to pause)",
+  "pad.glow": "Ambient glow that follows the Mac's audio",
   "bar.cpu": "CPU", "bar.mem": "RAM", "bar.battery": "BATT", "bar.disk": "DISK", "bar.volume": "VOL", "bar.uptime": "UP", "bar.load": "LOAD", "bar.clock": "TIME",
   "pad.radio.live": "LIVE",
   "pad.viz.starting": "LISTENING…",

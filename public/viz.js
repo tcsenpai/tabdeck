@@ -154,6 +154,7 @@ export function vizPreview(el) {
 
 // ───────────── Live connection ─────────────
 const views = []; // every visualizer tile on the current page; one stream feeds them all
+const subs = new Set(); // plain listeners of the band levels (the ambient glow), independent of the page
 let source = null;
 
 function close() {
@@ -162,12 +163,13 @@ function close() {
 }
 
 function open() {
-  if (!views.length || source || document.hidden || typeof EventSource === "undefined") return;
+  if ((!views.length && !subs.size) || source || document.hidden || typeof EventSource === "undefined") return;
   source = new EventSource("/api/viz"); // reconnects by itself
   source.onmessage = (e) => {
     try {
       const values = JSON.parse(e.data);
       for (const v of views) draw(v, values);
+      for (const fn of subs) fn(values);
     } catch {}
   };
   source.addEventListener("status", (e) => {
@@ -184,8 +186,18 @@ function open() {
 
 // The pad rebuilds its grid on page changes: call before rendering, so the old stream is dropped.
 export function resetViz() {
-  close();
   views.length = 0;
+  if (!subs.size) close(); // a glow listener keeps the stream across page changes
+}
+
+// Band levels (0..1) for something that is not a tile; returns the unsubscribe function.
+export function subscribeViz(fn) {
+  subs.add(fn);
+  open();
+  return () => {
+    subs.delete(fn);
+    if (!subs.size && !views.length) close();
+  };
 }
 
 export function mountViz(el) {

@@ -3,6 +3,7 @@ import { t, register, applyStatic } from "/assets/i18n.js";
 import { mountRadio, mountStation, resetTiles, setFavs, syncRadio } from "/assets/radio.js";
 import { mountViz, resetViz } from "/assets/viz.js";
 import { setBar } from "/assets/bar.js";
+import { setGlow } from "/assets/glow.js";
 import en from "/assets/locale-pad-en.js";
 import it from "/assets/locale-pad-it.js";
 
@@ -285,6 +286,19 @@ $("auto").addEventListener("click", () => {
   refreshState();
 });
 
+// Ambient glow: offered when the config allows it, switched on per tablet (it costs battery and CPU).
+const glowOn = () => !!state.cfg?.glow && localStorage.getItem("pad.glow") === "on";
+function paintGlow() {
+  $("glow").hidden = !state.cfg?.glow;
+  $("glow").classList.toggle("on", glowOn());
+  setGlow(glowOn());
+}
+$("glow").addEventListener("click", () => {
+  if (glowOn()) localStorage.removeItem("pad.glow");
+  else localStorage.setItem("pad.glow", "on");
+  paintGlow();
+});
+
 async function refreshState() {
   if (!state.live) return;
   try {
@@ -360,6 +374,7 @@ async function load() {
   setFavs(d.radioFavs);
   kioskBtn.hidden = d.kiosk === "off";
   paintAuto();
+  paintGlow();
   setBar($("chips"), d.bar);
   state.rev = d.rev;
   render();

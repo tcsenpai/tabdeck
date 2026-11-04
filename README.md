@@ -128,6 +128,13 @@ Terminal), because launchd starts the process.
   2×1, radio 4×2. Keys that get small hide their label (container queries) instead of
   overflowing. A pad saved by an earlier version is migrated on first start with the same
   layout, and the original is kept as `data/pad.json.v1.bak`.
+- **Ambient glow:** soft "Ambilight" light at the pad's edges that follows the Mac's audio: bass at
+  the bottom (magenta), mids at the sides (cyan), highs at the top (violet). Turn on "Offer the
+  ambient glow" in the editor (nothing selected), then each tablet switches it on with the **✦**
+  bar button (remembered per tablet). It shares the visualizer's audio capture and its **System
+  Audio Recording** permission, and the helper runs only while a tablet has the glow on. It is
+  drawn with static gradients whose opacity and scale are eased every frame (no blur filter),
+  and sleeps while the Mac is silent.
 - **Visualizer tile:** a spectrum of whatever the Mac is playing (any app), drawn on the tablet
   like the old media-player visualizations, in five styles you pick per tile (bars with falling peak caps, mirror, segmented blocks, wave, ring), resizable, several
   allowed. `tools/sysaudio.swift` captures the system output with a Core Audio *process tap*
@@ -224,7 +231,7 @@ Events and so need the Accessibility permission.
 | --- | --- |
 | `keys`, `text`, Mac actions with System Events | Accessibility (below) |
 | Automatic pages (window titles, browser URLs) | Automation: System Events, each browser (asked once) |
-| Visualizer | System Audio Recording |
+| Visualizer, ambient glow | System Audio Recording |
 | Macro recording | Input Monitoring |
 | Info bar, radio favourites, profiles | none |
 
