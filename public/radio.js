@@ -71,6 +71,7 @@ const post = (body) => call("/api/radio", { method: "POST", headers: { "Content-
 export function syncRadio(r) {
   if (STATIONS.some((s) => s.id === r.station)) S.id = r.station;
   S.output = r.output;
+  if (r.now) S.meta[r.station] = { title: r.now.title, artist: r.now.artist }; // titles read from the stream by the server (Virgin)
   if (r.output === "mac") {
     S.status = r.status;
     S.error = r.error || "";

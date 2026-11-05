@@ -115,7 +115,9 @@ Terminal), because launchd starts the process.
   tablet agrees. It keeps playing when you change page, a dropped stream reconnects
   (after 5 quick failures in a row it shows "NO SIGNAL"), and a player left behind by a server
   that was killed is stopped at the next start. One radio per pad. Titles come from Nightride's
-  public `/meta` feed, read by the browser. Streams belong to Nightride FM: this project is not
+  public `/meta` feed, read by the browser; for **Virgin Radio** (and any built-in stream that sends them)
+  the server reads the song titles from the stream itself (ICY metadata, `lib/nowplaying.ts`: a few KB per
+  15 s, nothing played or stored) and the widget shows artist and title. Streams belong to Nightride FM: this project is not
   affiliated with them, so please support the station.
 - **Radio station tile (1 cell):** a play/stop key for one station, such as **Virgin Radio**
   (the public AAC stream of its own web player, `icecast.unitedradio.it/Virgin.aac`; no track

@@ -4,6 +4,7 @@
 import type { Server } from "bun";
 import { ensureCert } from "./lib/tls.ts";
 import { createBuildId } from "./lib/build.ts";
+import { createNowPlaying } from "./lib/nowplaying.ts";
 import { ConfigError, createStore, faderValue, publicView, validateStep, validateSteps, type Button, type Step } from "./lib/config.ts";
 import { createState } from "./lib/state.ts";
 import { catalog, macScript } from "./lib/macos.ts";
@@ -11,7 +12,7 @@ import { APP_PRESETS, createContext, matchRule, type AppContext } from "./lib/co
 import { createInfo } from "./lib/info.ts";
 import { createRecorder } from "./lib/recorder.ts";
 import { createRadio, radioCommand } from "./lib/radio.ts";
-import { favId, isStation } from "./lib/stations.ts";
+import { favId, isStation, NIGHTRIDE_IDS, stationUrl } from "./lib/stations.ts";
 import { resolveStream, searchStations } from "./lib/radiobrowser.ts";
 import { createViz, sseResponse } from "./lib/viz.ts";
 import { createMic } from "./lib/mic.ts";
@@ -68,6 +69,7 @@ const KIOSK_URL = (() => {
 const running: Record<string, true> = {};
 
 const buildId = createBuildId(PUBLIC_DIR); // fingerprint of public/: the pad reloads itself when it changes
+const nowPlaying = createNowPlaying(); // song titles from the stream itself (ICY), for stations that publish them
 const noCache = { "Cache-Control": "no-store" };
 const json = (data: unknown, status = 200) => Response.json(data, { status, headers: noCache });
 
@@ -183,6 +185,15 @@ async function handle(req: Request, srv: Server): Promise<Response> {
       if (method === "GET" && path === "/api/state") {
         const s = await state.get();
         const out: Record<string, unknown> = hasRadio() ? { ...s, radio: radio.get() } : { ...s };
+        if (hasRadio()) {
+          // Nightride titles come from its own feed in the browser; the other built-in stations (Virgin) from ICY here.
+          const r = radio.get();
+          const live = r.output === "tablet" || r.status === "playing" || r.status === "loading";
+          if (live && isStation(r.station) && !NIGHTRIDE_IDS.includes(r.station as (typeof NIGHTRIDE_IDS)[number])) {
+            const now = await nowPlaying.get(stationUrl(r.station));
+            if (now) (out.radio as Record<string, unknown>).now = now;
+          }
+        }
         const { enabled, rules } = store.config.auto;
         if (enabled && rules.length) {
           // Only the page id goes to the tablet: the app name, window title or URL stay on the Mac.

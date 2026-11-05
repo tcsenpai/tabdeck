@@ -5,6 +5,8 @@ All notable changes. Newest first. The project is early and has no tagged releas
 ## Unreleased
 
 ### Added
+- **Now playing for Virgin Radio:** the server reads the song titles from the stream's ICY metadata
+  (`lib/nowplaying.ts`, cached 15 s) and the radio widget shows artist and title.
 - **Version label and auto-update:** the pad shows a fingerprint of its files (bottom left) and reloads
   itself when it changes (`lib/build.ts`, `build` in `/api/rev` and `/api/pad`); tap it to reload.
 - **Automatic pages:** the pad follows the app in front on the Mac (optional). Rules match an app

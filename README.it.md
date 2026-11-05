@@ -137,7 +137,7 @@ semplice `<audio>`, MP3). Stazione e uscita le ricorda il server in `data/radio.
 tutti i tablet concordano. Continua a suonare cambiando pagina, uno stream caduto si riconnette
 (dopo 5 fallimenti rapidi di fila mostra «NESSUN SEGNALE») e un player rimasto orfano dopo un
 server ucciso viene fermato al riavvio successivo. Una sola radio per pad. I titoli arrivano dal
-feed pubblico `/meta` di Nightride, letto dal browser. Gli stream sono di Nightride FM: il
+feed pubblico `/meta` di Nightride, letto dal browser; per **Virgin Radio** (e ogni stream integrato che li invia) il server legge i titoli dallo stream stesso (metadati ICY, `lib/nowplaying.ts`: pochi KB ogni 15 s, nulla viene riprodotto o salvato) e il widget mostra artista e titolo. Gli stream sono di Nightride FM: il
 progetto non è affiliato, quindi sostieni la stazione.
 
 ### Tile stazione (1 cella)
